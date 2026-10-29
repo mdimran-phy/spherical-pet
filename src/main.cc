@@ -474,11 +474,12 @@ int main(int argc, char** argv) {
             }
         }
 #ifdef PET_WITH_UIVIS
+        // Qt requires argc/argv storage to outlive the UI session.
+        int uiArgc = 1;
+        char* uiArgv[] = {argv[0], nullptr};
         std::unique_ptr<G4VisExecutive> vis;
         std::unique_ptr<G4UIExecutive> ui;
         if (!c.flag("batch")) {
-            int uiArgc = 1;
-            char* uiArgv[] = {argv[0], nullptr};
             ui = std::make_unique<G4UIExecutive>(uiArgc, uiArgv);
             vis = std::make_unique<G4VisExecutive>("quiet");
             vis->Initialize();
