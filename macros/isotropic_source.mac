@@ -1,0 +1,6 @@
+# Source commands only. Applied after command-line source settings.
+/gps/particle gamma
+/gps/energy 511 keV
+/gps/pos/type Point
+/gps/pos/centre 0 0 0 mm
+/gps/ang/type iso

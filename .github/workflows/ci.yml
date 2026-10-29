@@ -1,0 +1,15 @@
+name: Source checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  config-and-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test the standalone configuration component
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Iinclude src/Config.cc tests/test_config.cc -o /tmp/test-pet-config
+          /tmp/test-pet-config
+      - name: Check Python syntax
+        run: python3 -m compileall -q scripts tests

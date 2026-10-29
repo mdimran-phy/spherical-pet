@@ -1,0 +1,17 @@
+/build*/
+/install*/
+/results/
+/output*/
+/figures/
+/logs/
+*.log
+*.root
+*.o
+*.a
+*.so
+*.dylib
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.DS_Store

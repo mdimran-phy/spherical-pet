@@ -1,0 +1,12 @@
+{
+  "original_input_sha256": {
+    "DetectorConstruction.cc": "11e0aba8e45a27877b511242545020db8ab85d90d714681eb257d4d98be86585",
+    "DetectorConstruction.hh": "16edda3a5c978d23b8fbd51a739f88faa38d2e938c3a6854b75ca358ef475434"
+  },
+  "g4sipm_repository": "https://github.com/c-dilks/g4sipm.git",
+  "g4sipm_branch": "geant11-fixes",
+  "g4sipm_commit": "53d953ee2427309cfa4d6b94d60f09a28ba1fa20",
+  "jansson_commit": "bc5741fb1ac730ead24e9bd08977fc6c248e04b0",
+  "geant4": "11.1.2",
+  "compiler": "c++ (GCC) 11.5.0 20240719 (Red Hat 11.5.0-14)"
+}
