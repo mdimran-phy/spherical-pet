@@ -44,6 +44,14 @@ int main() {
         rejects({"--unknown", "1"});
         rejects({"--events"});
         rejects({"--angular", "wrong"});
+        require(parse({}).text("guide-shape") == "pentagon-hexagon", "Original shape default");
+        require(parse({"--guide-shape", "pentagon-octagon"}).text("guide-shape") ==
+                    "pentagon-octagon",
+                "Octagon selector");
+        rejects({"--guide-shape", "octagon"});
+        rejects({"--guide-bevel-fraction", "0"});
+        rejects({"--guide-bevel-fraction", "0.5"});
+        rejects({"--guide-bevel-fraction", "nan"});
         std::cout << "PASS: standalone configuration tests\n";
         return 0;
     } catch (const std::exception& e) {

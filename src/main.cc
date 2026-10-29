@@ -284,6 +284,9 @@ void exportGeometry(G4VPhysicalVolume* world, const fs::path& out, const Config&
         // Core placed optics and sensor packages only, to keep the mesh readable.
         if (depth == 1) {
             auto* poly = lv->GetSolid()->GetPolyhedron();
+            if (!poly)
+                throw std::runtime_error("Cannot export geometry mesh for " +
+                                         std::string(pv->GetName()));
             if (poly) {
                 mesh << "o " << pv->GetName() << "\n";
                 for (int f = 1; f <= poly->GetNoFacets(); ++f) {

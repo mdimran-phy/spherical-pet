@@ -10,7 +10,7 @@ Energy deposition counts non-optical particle deposits in LYSO, avoiding optical
 
 `sipm_hits.csv`: `event, sipm_id, track_id, time_ns, energy_eV, x_mm, y_mm, z_mm`.
 
-The sensor ID divided by 16 gives the array index. Arrays 0–11 are on pentagonal guide regions; arrays 12–31 are on hexagonal regions. Hit positions are actual photon positions, whereas `sensor_positions.csv` stores sensor centers. Event/track ID pairs uniquely identify accepted photons within a run. Arrival times include emission delay and optical propagation; no electronics timing resolution has been added.
+The sensor ID divided by 16 gives the array index. Arrays 0–11 are on pentagonal guide regions; arrays 12–31 are on hexagonal or beveled octagonal regions according to `guide-shape`. Hit positions are actual photon positions, whereas `sensor_positions.csv` stores sensor centers. Event/track ID pairs uniquely identify accepted photons within a run. Arrival times include emission delay and optical propagation; no electronics timing resolution has been added.
 
 ## Trajectories
 
@@ -37,3 +37,5 @@ Keep `resolved.conf`, `source_commands.mac`, `spectrum.csv`, `build.txt`, the re
 `resolved.conf` records requested configuration values; a source macro may override the source. `source_commands.mac` records the actual sequence applied. To replay a run from another directory, use its saved spectrum and source-command files explicitly and select a new output directory.
 
 Geometry mode writes configuration, spectrum, build information, optional geometry exports, and `geometry_check.json`; it does not write event records or a transport summary.
+
+`guide_sections.csv` records each selected shoulder polygon: `array_id,shape,vertex,x_mm,y_mm,z_mm`. It is written in geometry and simulation modes, including when mesh export is disabled. See [geometry](geometry.md) for how these outlines relate to the solid.

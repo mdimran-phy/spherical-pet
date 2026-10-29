@@ -30,6 +30,10 @@ const std::vector<Option>& Config::options() {
         {"source-y-mm", "-gy", "0", "Source y position [mm]"},
         {"source-z-mm", "-gz", "0", "Source z position [mm]"},
         {"shell-thickness-mm", "", "10", "LYSO shell thickness [mm]; outer radius remains 34.5 mm"},
+        {"guide-shape", "", "pentagon-hexagon",
+         "pentagon-hexagon (supplied) or pentagon-octagon (beveled variant)"},
+        {"guide-bevel-fraction", "", "0.25",
+         "Octagon corner cut as fraction of adjacent hexagon edges (0 < f < 0.5)"},
         {"sipm-pitch-mm", "", "4.4", "Sensor center pitch in each 4x4 array [mm]"},
         {"sipm-model", "", "HamamatsuS1036233100",
          "Built-in G4SiPM model name; package must fit array pitch"},
@@ -183,6 +187,10 @@ void Config::validate() const {
         throw std::runtime_error("--seed must be 1..2147483646");
     if (text("particle") != "gamma" && text("particle") != "e-" && text("particle") != "e+")
         throw std::runtime_error("Supported primaries: gamma, e-, e+");
+    if (text("guide-shape") != "pentagon-hexagon" && text("guide-shape") != "pentagon-octagon")
+        throw std::runtime_error("--guide-shape must be pentagon-hexagon or pentagon-octagon");
+    if (number("guide-bevel-fraction") <= 0 || number("guide-bevel-fraction") >= 0.5)
+        throw std::runtime_error("--guide-bevel-fraction must be strictly between 0 and 0.5");
     if (text("angular") != "fixed" && text("angular") != "isotropic")
         throw std::runtime_error("--angular must be fixed or isotropic");
     for (const auto& key : {"energy-kev", "shell-thickness-mm", "sipm-pitch-mm", "lyso-decay-ns",

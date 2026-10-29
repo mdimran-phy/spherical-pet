@@ -13,6 +13,16 @@ parser.add_argument('--input', type=Path, default=Path('results/run'))
 parser.add_argument('--output', type=Path)
 args = parser.parse_args()
 INPUT = args.input
+settings = {}
+if (INPUT/'resolved.conf').exists():
+    for line in (INPUT/'resolved.conf').read_text().splitlines():
+        if '=' in line and not line.lstrip().startswith('#'):
+            key, value = line.split('=', 1)
+            settings[key.strip()] = value.strip()
+shape = settings.get('guide-shape', 'pentagon-hexagon')
+shape_label = ('Derived model: pentagonal and irregular octagonal guide shoulders.'
+               if shape == 'pentagon-octagon' else
+               'Supplied model: pentagonal and hexagonal guide sections.')
 OUT = args.output if args.output is not None else INPUT/'figures' 
 OUT.mkdir(exist_ok=True)
 def rows(name):
@@ -171,11 +181,11 @@ center('Spherical PET — hemispherical model',42,39)
 center('Purple scintillator · clear faceted light guide · demonstration cutaway',102,23,'#606975')
 center('Actual exported geometry; upper hemisphere shown',1182,25)
 center('Guide sections are hidden for presentation. Simulation geometry is unchanged.',1224,20,'#606975')
-center('Supplied model: pentagonal and hexagonal guide sections.',1260,20,'#606975')
+center(shape_label,1260,20,'#606975')
 img.save(OUT/'photo_style_detector.png')
 img.save(OUT/'photo_style_detector.pdf',resolution=150)
 # Embed data so the viewer needs no server or external libraries.
 template=(ROOT/'scripts/display_assets/photo_viewer.html').read_text()
-(OUT/'photo_style_event_display.html').write_text(template.replace('__GEOMETRY_DATA__',json.dumps(payload,separators=(',',':'))))
+(OUT/'photo_style_event_display.html').write_text(template.replace('__GUIDE_SHAPE_LABEL__',shape_label).replace('__GEOMETRY_DATA__',json.dumps(payload,separators=(',',':'))))
 print('Rendered:',len(scint),'scintillator triangles;',len(visible),'visible guide triangles.')
 print('Upper hemisphere sensor centers:',len(payload['sensors']))

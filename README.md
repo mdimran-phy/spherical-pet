@@ -4,7 +4,7 @@ A standalone Geant4 application for a spherical LYSO PET detector with a faceted
 
 ![Purple scintillator and clear light-guide cutaway](docs/images/detector.png)
 
-The current simulation constructs a **full sphere**, with **512 SiPMs in 32 arrays of 4 × 4**, and **12 pentagonal plus 20 hexagonal guide sections**. The image shows an upper-hemisphere cutaway for presentation. The supplied geometry does not implement octagonal guide sections. Detector-response parameters are provisional; coincidence selection and PET image reconstruction are not implemented.
+The current simulation constructs a **full sphere**, with **512 SiPMs in 32 arrays of 4 × 4**, and **12 pentagonal plus 20 hexagonal guide sections by default**. The image shows an upper-hemisphere cutaway for presentation. Select `--guide-shape pentagon-octagon` for a derived geometry with 20 irregular octagonal shoulders, made by beveling two opposite corners of each hexagonal section. See [guide geometry](docs/geometry.md) for the construction and its limits. Detector-response parameters are provisional; coincidence selection and PET image reconstruction are not implemented.
 
 ## Requirements
 
@@ -48,6 +48,20 @@ Check the detector geometry without transporting events:
 
 ```bash
 ./build/spherical-pet -r 1 -o results/geometry
+```
+
+Select the light-guide shape (the scintillator remains spherical):
+
+```bash
+# Supplied pentagon/hexagon geometry (default)
+./build/spherical-pet --guide-shape pentagon-hexagon -r 1 -o results/hexagon
+
+# Pentagon/octagon variant, with corner cuts 25% along adjacent edges
+./build/spherical-pet --guide-shape pentagon-octagon \
+    --guide-bevel-fraction 0.25 --check-overlaps 1 -e 10 -o results/octagon
+
+python3 scripts/photo_geometry_display.py --input results/octagon
+# Open results/octagon/figures/photo_style_event_display.html in your browser.
 ```
 
 Use a configuration file and override selected parameters:

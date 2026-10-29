@@ -32,4 +32,21 @@ with tempfile.TemporaryDirectory() as temp:
     run(['--mode','geometry','--shell-thickness-mm','8','--sipm-pitch-mm','4','--mesh-steps','12','--overlap-samples','100','-o',root/'geometry'])
     check=json.loads((root/'geometry/geometry_check.json').read_text())
     assert check['volumes_reporting_overlaps']==0
+    run([*common,'--guide-shape','pentagon-octagon','--check-overlaps','1',
+         '--overlap-samples','100','-o',root/'octagon'])
+    octagon=json.loads((root/'octagon/summary.json').read_text())
+    assert octagon['guard_killed_tracks']==0 and octagon['sipm_accepted_hits']>0
+    assert sum(octagon['optical_endings'].values())==octagon['optical_created']
+    check=json.loads((root/'octagon/geometry_check.json').read_text())
+    assert check['volumes_reporting_overlaps']==0
+    assert 'o chapeauPoofMinusHomeOrb_PV\n' in (root/'octagon/geometry.obj').read_text()
+    assert (root/'octagon/geometry.obj').read_bytes()!=(root/'a/geometry.obj').read_bytes()
+    assert (root/'octagon/sensor_positions.csv').read_bytes()==(root/'a/sensor_positions.csv').read_bytes()
+    with (root/'octagon/guide_sections.csv').open() as f:sections=list(csv.DictReader(f))
+    assert len(sections)==12*5+20*8
+    for array in range(32):
+        vertices=[r for r in sections if int(r['array_id'])==array]
+        assert len(vertices)==(5 if array<12 else 8)
+        assert {r['shape'] for r in vertices}==({'pentagon'} if array<12 else {'octagon'})
+    assert 'guide-shape = pentagon-octagon' in (root/'octagon/resolved.conf').read_text()
 print('PASS: deterministic transport, photon accounting, saved optical steps, sensor inventory, parameterized geometry')

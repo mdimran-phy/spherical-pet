@@ -17,6 +17,8 @@ Values use the units named in the option. Boolean options require 0 or 1.
 | `--source-y-mm` | `-gy` | `0` | Source y position [mm] |
 | `--source-z-mm` | `-gz` | `0` | Source z position [mm] |
 | `--shell-thickness-mm` | `` | `10` | LYSO shell thickness [mm]; outer radius remains 34.5 mm |
+| `--guide-shape` | | `pentagon-hexagon` | `pentagon-hexagon` (supplied) or `pentagon-octagon` (derived bevels); see [geometry](geometry.md) |
+| `--guide-bevel-fraction` | | `0.25` | Fraction along adjacent edges cut at two opposite hexagon corners; strictly between 0 and 0.5; used only by octagon option |
 | `--sipm-pitch-mm` | `` | `4.4` | Sensor center pitch in each 4x4 array [mm] |
 | `--sipm-model` | `` | `HamamatsuS1036233100` | Built-in G4SiPM model name; package must fit array pitch |
 | `--lyso-yield` | `` | `32` | Scintillation photons per keV |

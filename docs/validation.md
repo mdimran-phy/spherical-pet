@@ -30,3 +30,17 @@ The default detector's overlap audit checked 2,055 placed volumes with 1,000 sam
 This is a small transport check, not a detector-performance measurement. Some primary gammas escape without depositing energy; event 0 in this reference run is one such event. Output files and local builds are deliberately excluded from the source repository.
 
 The independent configuration-only compile used by GitHub CI also passed. No CI result from GitHub itself is claimed before publication.
+
+## Selectable guide shapes
+
+The shape update adds a fourth CTest test for closed, navigable bevel solids at fractions 0.01, 0.25, and 0.49. The transport test now runs both guide options and checks optical-photon accounting, nonzero octagon-mode SiPM response, identical sensor positions, exported guide meshes, shoulder vertex counts, and zero sampled overlaps. All four tests pass locally.
+
+```bash
+./build/spherical-pet --config config/octagon.conf --check-overlaps 1 \
+    -e 10 -seed 42 --track-photons 5 -o results/octagon_verified
+python3 scripts/photo_geometry_display.py --input results/octagon_verified
+```
+
+The octagon run completed 10 events: 1543.62601098 keV deposited in LYSO, 49,258 optical photons, 4,033 accepted SiPM hits, and zero track-guard kills. Its overlap check reported zero overlaps across 2,055 volumes, using 1,000 samples per volume and 0.001 mm tolerance. The exported guide uses the actual sequential Boolean corner subtractions. Mesh export now fails explicitly if any top-level placed solid cannot produce a mesh, rather than silently omitting that component.
+
+These results validate execution and sampled geometry consistency, not the optical performance of a manufactured detector. The octagon mode is the documented irregular bevel design.

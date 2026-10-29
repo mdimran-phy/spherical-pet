@@ -7,6 +7,9 @@
  */
 
 #include "DetectorConstruction.hh"
+#include "GuideShape.hh"
+#include <fstream>
+#include <iomanip>
 #include <stdexcept>
 #include <set>
 
@@ -2857,7 +2860,39 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
 
   chapeauPoofMinusHomeOrb = new G4SubtractionSolid( "chapeauPoofMinusHomeOrb", chapeauPoof_A2, lg_orb_void ); 
   //chapeauPoofMinusHomeOrb = new G4SubtractionSolid( "chapeauPoofMinusHomeOrb", chapeauPoof, lg_orb_void ); 
-  chapeauPoofMinusHomeOrb_LV = new G4LogicalVolume( chapeauPoofMinusHomeOrb, MaterialFactory::getInstance()->getEpoxy(), "chapeauPoofMinusHomeOrb", 0, 0, 0 );
+  // Keep the supplied guide intact by default. The optional bevel removes two
+  // opposite shoulder corners from each hexagonal section; it adds no material.
+  G4VSolid* selectedGuide = chapeauPoofMinusHomeOrb;
+  const bool octagons = config.text("guide-shape") == "pentagon-octagon";
+  std::ofstream sections(config.text("output") + "/guide_sections.csv");
+  if (!sections) throw std::runtime_error("Cannot write guide_sections.csv");
+  sections << "array_id,shape,vertex,x_mm,y_mm,z_mm\n" << std::setprecision(12);
+  for (int array = 0; array < 32; ++array) {
+      const bool pent = array < 12;
+      const int index = pent ? array : array - 12;
+      std::vector<G4ThreeVector> ring;
+      for (int v=0; v<(pent ? 5 : 6); ++v)
+          ring.push_back(chapeau_Vertices[pent ? pentagonVertexIndices[index][v]
+                                               : hexagonVertexIndices[index][v]] * chapeau_scale);
+      if (octagons && !pent) {
+          for (int corner : {0,3}) {
+              auto* cut = guideCornerCut("guideCornerCut" + std::to_string(array) + "_" + std::to_string(corner),
+                  ring[corner], ring[(corner+5)%6], ring[(corner+1)%6],
+                  hexagonQuad_Vertices[index],config.number("guide-bevel-fraction"));
+              selectedGuide = new G4SubtractionSolid("pentagonOctagonGuide" + std::to_string(array) + "_" + std::to_string(corner), selectedGuide,cut);
+          }
+          ring = bevelGuideHexagon(ring,config.number("guide-bevel-fraction"));
+      }
+      for (size_t v=0; v<ring.size(); ++v)
+          sections << array << ',' << (pent ? "pentagon" : (octagons ? "octagon" : "hexagon"))
+                   << ',' << v << ',' << ring[v].x()/mm << ',' << ring[v].y()/mm
+                   << ',' << ring[v].z()/mm << '\n';
+
+  }
+  sections.close();
+  if (!sections) throw std::runtime_error("Cannot finish guide_sections.csv");
+
+  chapeauPoofMinusHomeOrb_LV = new G4LogicalVolume( selectedGuide, MaterialFactory::getInstance()->getEpoxy(), "chapeauPoofMinusHomeOrb", 0, 0, 0 );
   //chapeauPoofMinusHomeOrb_LV->SetVisAttributes(new G4VisAttributes(G4Color(brown.GetRed()+0.2, brown.GetGreen()+0.2, brown.GetBlue()+0.2, 0.9)));
   chapeauPoofMinusHomeOrb_LV->SetVisAttributes(new G4VisAttributes(G4Color(brown.GetRed()+0.2, brown.GetGreen()+0.2, brown.GetBlue()+0.2, 1.0)));
   G4RotationMatrix* chapeauPoofMinusHomeOrbMatrix = new G4RotationMatrix();
