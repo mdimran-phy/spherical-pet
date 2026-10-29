@@ -48,3 +48,7 @@ if(BUILD_TESTING)
     set_tests_properties(transport PROPERTIES TIMEOUT 180)
   endif()
 endif()
+install(FILES third_party/jansson/LICENSE
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/spherical-pet/licenses/jansson)
+install(FILES third_party/g4sipm/LICENSE
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/spherical-pet/licenses/g4sipm)

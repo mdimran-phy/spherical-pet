@@ -163,7 +163,7 @@ ctest --test-dir build --output-on-failure
 cmake --install build --prefix "$HOME/.local"
 ```
 
-Tests cover CLI validation, configuration precedence, deterministic transport, photon accounting, optical-track recording, output protection, and an altered geometry. Lightweight GitHub CI checks the configuration component and Python syntax; the transport suite requires a local Geant4 environment. The installed executable is under `bin/`, and configs, scripts, documentation and licenses are under `share/spherical-pet/`.
+Tests cover CLI validation, configuration precedence, deterministic transport, photon accounting, optical-track recording, output protection, and an altered geometry. Lightweight GitHub CI checks the configuration component and Python syntax; the transport suite requires a local Geant4 environment. See [the validation record](docs/validation.md) for the tested environment and actual checks. The installed executable is under `bin/`, and configs, scripts, documentation and licenses are under `share/spherical-pet/`.
 
 ## Model scope and development
 
