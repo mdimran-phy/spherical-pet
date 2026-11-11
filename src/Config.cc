@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "Config.hh"
+#include "GeometryParameters.hh"
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -60,7 +61,10 @@ const std::vector<Option>& Config::options() {
         {"overlap-samples", "", "1000", "Sampled points per volume for overlap check"},
         {"overlap-tolerance-mm", "", "0.001", "Overlap-check tolerance [mm]"},
         {"macro", "-m", "", "Optional source macro; /gps/* commands only"},
-        {"batch", "-b", "1", "1 batch; 0 opens Geant4 UI (requires WITH_GEANT4_UIVIS=ON)"},
+        {"batch", "-b", "1",
+         "1 batch; 0 opens native geometry, tracks and SiPM hits (UIVIS build)"},
+        {"vis-photons", "", "50",
+         "First N optical paths/event in native display; 0 hides optical paths"},
         {"verbose", "-v", "0", "Application and SiPM verbosity [0..2]"}};
     return list;
 }
@@ -197,7 +201,8 @@ void Config::validate() const {
                             "lyso-absorption-mm", "scint-width-ev", "range-cut-mm"})
         if (number(key) <= 0)
             throw std::runtime_error(std::string("--") + key + " must be positive");
-    if (number("shell-thickness-mm") >= 33.5)
+    if (number("shell-thickness-mm") >=
+        GeometryParameters::shellOuterRadiusMm - GeometryParameters::innerLinerThicknessMm)
         throw std::runtime_error(
             "Shell thickness must be below 33.5 mm to leave room for the 1 mm inner liner");
     if (number("lyso-yield") < 0 || number("epoxy-absorption-mm") < 0)
@@ -208,12 +213,12 @@ void Config::validate() const {
         throw std::runtime_error("--theta must be 0..180 degrees");
     number("phi");
     for (const auto& key : {"source-x-mm", "source-y-mm", "source-z-mm"})
-        if (std::abs(number(key)) >= 99)
+        if (std::abs(number(key)) >= GeometryParameters::worldHalfLengthMm - 1.0)
             throw std::runtime_error("Source must lie within the world (|coordinate| < 99 mm)");
     for (const auto& key :
          {"batch", "pde-filter", "cell-filter", "export-geometry", "check-overlaps"})
         flag(key);
-    if (integer("max-steps") < 1 || integer("track-photons") < 0 ||
+    if (integer("max-steps") < 1 || integer("track-photons") < 0 || integer("vis-photons") < 0 ||
         integer("overlap-samples") < 1 || number("overlap-tolerance-mm") < 0)
         throw std::runtime_error("Invalid track or overlap limit");
     if (integer("mesh-steps") < 12 || integer("mesh-steps") > 192)

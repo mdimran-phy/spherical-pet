@@ -1,0 +1,100 @@
+{
+  "date": "2026-11-11",
+  "geant4": "11.1.2",
+  "reference_output_directory": "/scratch/ihossain/pet_report_cleanup_sklmwc7a",
+  "ctest": "6/6 passed",
+  "comparisons": {
+    "pentagon-hexagon": {
+      "events.csv": {
+        "identical": true,
+        "sha256": "6637bd0029c1d11a062e463ee5e4758f4b593f99079dde37bbf1a8a44fda6094"
+      },
+      "sipm_hits.csv": {
+        "identical": true,
+        "sha256": "fbe7f7b8c8da0b92f276621a2657cbf73474dc51c5877c5a838f68fc0984af96"
+      },
+      "optical_steps.csv": {
+        "identical": true,
+        "sha256": "2a134342c2d4f56199bf133f7c296af5abe4c4a8ca5b0f2eb237ae1e1f319e51"
+      },
+      "sensor_positions.csv": {
+        "identical": true,
+        "sha256": "3a636310352210dfa26cb3e1e292dae6b68580f7651668bb6afe18c56c99532b"
+      },
+      "geometry_inventory.csv": {
+        "identical": true,
+        "sha256": "c23be0c1cac477a2628a2de6ddd49087b3ada92651050e44db85b1be2e359f78"
+      },
+      "geometry.obj": {
+        "identical": true,
+        "sha256": "e3c89889b178f0f89b76b06e9d0782c239635a69832cb19544a352c0e83d23b8"
+      },
+      "guide_sections.csv": {
+        "identical": true,
+        "sha256": "deaae0607a539cd091c11d1d4d2445e14b52783808df579f8524ce1f428fc8c5"
+      },
+      "summary.json": {
+        "identical": true,
+        "sha256": "c91c4dfefb422c196779ce23bb6ea52703df78dca80377646837665bf9fa1a49"
+      }
+    },
+    "pentagon-octagon": {
+      "events.csv": {
+        "identical": true,
+        "sha256": "fed6273b2abdd66e474c83b188d1c0a168216e3f958bf497027b0c8f8c91933c"
+      },
+      "sipm_hits.csv": {
+        "identical": true,
+        "sha256": "9e30c778218431f6446cd8713dac6e053d03f1517c89535bba1a80db38e255b8"
+      },
+      "optical_steps.csv": {
+        "identical": true,
+        "sha256": "2a134342c2d4f56199bf133f7c296af5abe4c4a8ca5b0f2eb237ae1e1f319e51"
+      },
+      "sensor_positions.csv": {
+        "identical": true,
+        "sha256": "3a636310352210dfa26cb3e1e292dae6b68580f7651668bb6afe18c56c99532b"
+      },
+      "geometry_inventory.csv": {
+        "identical": true,
+        "sha256": "c23be0c1cac477a2628a2de6ddd49087b3ada92651050e44db85b1be2e359f78"
+      },
+      "geometry.obj": {
+        "identical": true,
+        "sha256": "88117b0f264100270dcc85662bb29b717e15c35f351f24a6f089e968a2c43dbb"
+      },
+      "guide_sections.csv": {
+        "identical": true,
+        "sha256": "41c84a6aa1c5dd9dd751964629a93c182401e89e7877303281ca91922d2a414c"
+      },
+      "summary.json": {
+        "identical": true,
+        "sha256": "097308bed890b83cc4e04c90ad115807a5973c817e8671f92b758c0c7f129745"
+      }
+    }
+  },
+  "overlap_audits": {
+    "pentagon-hexagon": {
+      "volumes_checked": 2055,
+      "volumes_reporting_overlaps": 0,
+      "samples_per_volume": 1000,
+      "tolerance_mm": 0.001
+    },
+    "pentagon-octagon": {
+      "volumes_checked": 2055,
+      "volumes_reporting_overlaps": 0,
+      "samples_per_volume": 1000,
+      "tolerance_mm": 0.001
+    }
+  },
+  "warning_check": "DetectorConstruction.cc and test_detector.cc pass -Wall -Wextra -Werror -fsyntax-only",
+  "source_sha256": {
+    "src/DetectorConstruction.cc": "c327979241c5d1bd3cbe5d8cde0eb5d4e1494b211a17dd5c52936eadb71d2dd8",
+    "include/DetectorConstruction.hh": "eccdd3ff7af4aedde59db6166aac5231193838d01914b95a33a2dc6f8cc11c8a",
+    "include/GeometryParameters.hh": "b325db07e065450b356da0ecaddddcad06f5b51d41f645ed37375829af01b7f2",
+    "src/Config.cc": "5b8d12a14386895fbab3eaed56c7d6ff13a987f59d18d4713a1802cbf6cb9cb2",
+    "tests/test_detector.cc": "f7642ca5bbfa862984b3978229ce3b3fce5cc467e86d70f39b98246a8e89e5ae",
+    "tests/test_cli.py": "5545d027ff5fe0dc501b13eb488a1d17f157b09c07d65d41ac85124a89ecbc50",
+    "CMakeLists.txt": "77e7af26307529158952c0315a32213821f4ee2642cbf083db78c1e01139448e"
+  }
+}

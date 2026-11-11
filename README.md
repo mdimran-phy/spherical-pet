@@ -113,7 +113,8 @@ Common options:
 | `--spectrum` | CSV emission spectrum in photon energy | provisional flat spectrum |
 | `--check-overlaps` | Sampled geometry audit before transport | 0 |
 | `--track-photons` | Optical tracks saved per event | 0 |
-| `-b`, `--batch` | 1=batch, 0=native GUI | 1 |
+| `-b`, `--batch` | 1=batch, 0=native event display | 1 |
+| `--vis-photons` | Optical paths drawn per event in native display (0 hides them) | 50 |
 
 Configuration files use `key = value`; a line starting with `#` is a comment. Explicit CLI options override configuration files regardless of their position. Multiple configuration files are read in argument order. Input-file paths in a configuration file are relative to that file; the output path is relative to the working directory. Use `--print-config` to inspect the resolved values without running Geant4.
 
@@ -160,15 +161,27 @@ Open the files under `results/gamma42/figures/`:
 
 The HTML viewers are standalone and need no web server, network connection, or external JavaScript library. The shaded viewer requires WebGL. The displays currently draw gamma paths and SiPM occupancy; recorded optical steps are available in CSV for further analysis. The shaded cutaway can also be generated from a geometry-only output directory.
 
-For the native Geant4 GUI:
+For a native command-line event display, like `eicdirc`, enable visualization in the executable you run:
 
 ```bash
-cmake -S . -B build-gui -DCMAKE_BUILD_TYPE=Release -DWITH_GEANT4_UIVIS=ON
-cmake --build build-gui -j4
-./build-gui/spherical-pet -r 1 -b 0 -o results/native_view
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DWITH_GEANT4_UIVIS=ON
+cmake --build build -j4
+cd build
+source native-env.sh   # Linux: use the same Qt libraries as the Geant4 GUI
+./spherical-pet -b 0 -e 10 -seed 42 --vis-photons 50 -o results/native_events
 ```
 
-This requires a Geant4 installation with suitable UI/visualization drivers and a working graphical display. Headless servers should use the exported HTML viewers.
+`-b 0` opens the Geant4 viewer, runs the requested events, and leaves the window open. `-b 1` (the default) runs in batch mode. Use a new output directory for each invocation; paths are relative to your current directory. `./spherical-pet --version` reports whether native visualization is enabled.
+
+The view shows the full detector with wireframe scintillator and guide so tracks remain visible. Red tracks are gammas, blue tracks are electrons, magenta tracks are positrons, cyan tracks are optical photons, and green markers are accepted SiPM hits. The requested events are initially overlaid. Use **PET → Review events** in the Qt menu, or enter `/vis/reviewKeptEvents` in the Geant4 command field, to inspect retained events individually. Enter `continue` to advance. Close the window or enter `exit` to finish. One simulation run is supported per process; relaunch to simulate another run.
+
+`--vis-photons 50` draws the first 50 optical tracks started per event; `--vis-photons 0` hides optical paths. This controls native trajectory storage, not photon generation or hit acceptance. `--track-photons` separately controls recording optical steps to CSV. Some gammas escape without depositing energy, so an individual event may have no optical paths or SiPM hits.
+
+For geometry alone, use `./spherical-pet -r 1 -b 0 -o results/native_geometry`. The display uses the same geometry and transport as batch mode.
+
+On Linux, `native-env.sh` is generated from the Qt library path selected by CMake. Source it after loading Geant4. This prevents mixing the farm's Qt 5.15.13 platform plugin with system Qt 5.15.9 private libraries.
+
+A working graphical display is required. When connecting to a farm host by SSH, enable X forwarding (for example, `ssh -Y ihossain@ifarm2401`) and run a local X server. `echo "$DISPLAY"` should show the forwarded display. A native request without a display fails with an explanation before creating output files. The offline HTML viewers remain available for sessions without graphics.
 
 ## Check and install
 

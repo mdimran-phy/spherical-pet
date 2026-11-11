@@ -8,6 +8,7 @@
 #include "G4Version.hh"
 #include "G4VisAttributes.hh"
 #include <cmath>
+#include <cstdlib>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -33,6 +34,8 @@
 #include "G4Step.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Track.hh"
+#include "G4TrackingManager.hh"
+#include "G4TrajectoryContainer.hh"
 #include "G4TransportationManager.hh"
 #include "G4UImanager.hh"
 #include "G4UserEventAction.hh"
@@ -42,6 +45,7 @@
 #include "G4VModularPhysicsList.hh"
 #include "G4VProcess.hh"
 #include "G4VSensitiveDetector.hh"
+#include "G4VTrajectory.hh"
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "Randomize.hh"
 #include "hit/G4SipmHit.hh"
@@ -178,6 +182,17 @@ class EventAction : public G4UserEventAction {
         s.totalHits += n;
         s.totalEdep += s.edep / keV;
         s.totalKilled += s.killed;
+        if (!s.config.flag("batch")) {
+            auto* trajectories = e->GetTrajectoryContainer();
+            int opticalPaths = 0;
+            if (trajectories)
+                for (int i = 0; i < trajectories->entries(); ++i)
+                    if ((*trajectories)[i]->GetParticleName() == "opticalphoton")
+                        ++opticalPaths;
+            G4cout << "PET_DISPLAY_EVENT event=" << s.event
+                   << " trajectories=" << (trajectories ? trajectories->entries() : 0)
+                   << " optical_paths=" << opticalPaths << " SiPM_hits=" << n << G4endl;
+        }
         if (s.config.integer("verbose") > 0)
             G4cout << "PET_EVENT " << s.event << " Edep_keV=" << s.edep / keV
                    << " optical=" << s.optical << " hits=" << n << G4endl;
@@ -189,7 +204,13 @@ class Tracking : public G4UserTrackingAction {
   public:
     explicit Tracking(State& x) : s(x) {}
     void PreUserTrackingAction(const G4Track* t) override {
-        if (t->GetDefinition() != G4OpticalPhoton::Definition())
+        const bool optical = t->GetDefinition() == G4OpticalPhoton::Definition();
+        // Native trajectories are independent of CSV recording. Keep all charged
+        // and gamma tracks, but only the first N optical tracks of each event.
+        const bool draw =
+            !s.config.flag("batch") && (!optical || s.optical < s.config.integer("vis-photons"));
+        fpTrackingManager->SetStoreTrajectory(draw ? 1 : 0);
+        if (!optical)
             return;
         ++s.optical;
         if (s.optical <= s.config.integer("track-photons"))
@@ -363,16 +384,22 @@ int auditGeometry(G4VPhysicalVolume* world, const Config& c) {
     G4cout << "GEOMETRY_CHECK volumes=" << checked << " overlap_reports=" << overlaps << G4endl;
     return overlaps;
 }
-void displayColors() {
+void displayColors(bool nativeDisplay) {
     for (auto* lv : *G4LogicalVolumeStore::GetInstance()) {
         const auto& name = lv->GetName();
         if (name.find("Scint_LV") != std::string::npos) {
             auto* a = new G4VisAttributes(G4Colour(.55, .1, .75, .75));
-            a->SetForceSolid(true);
+            if (nativeDisplay)
+                a->SetForceWireframe(true);
+            else
+                a->SetForceSolid(true);
             lv->SetVisAttributes(a);
         } else if (name.find("chapeauPoofMinusHomeOrb") != std::string::npos) {
             auto* a = new G4VisAttributes(G4Colour(.8, .95, 1., .2));
-            a->SetForceSolid(true);
+            if (nativeDisplay)
+                a->SetForceWireframe(true);
+            else
+                a->SetForceSolid(true);
             lv->SetVisAttributes(a);
         } else if (name == "world_LV" || name.find("Gasket") != std::string::npos ||
                    name.find("homeSphereMinusChapeauCasting") != std::string::npos ||
@@ -391,6 +418,11 @@ int main(int argc, char** argv) {
         }
         if (c.versionRequested) {
             std::cout << "spherical-pet 0.1.0\n" << G4Version << "\n";
+#ifdef PET_WITH_UIVIS
+            std::cout << "Native event display: enabled (use -b 0)\n";
+#else
+            std::cout << "Native event display: disabled\n";
+#endif
             return 0;
         }
         if (c.printRequested) {
@@ -401,6 +433,12 @@ int main(int argc, char** argv) {
         if (!c.flag("batch"))
             throw std::runtime_error(
                 "Interactive display requires a build with -DWITH_GEANT4_UIVIS=ON");
+#endif
+#if defined(PET_WITH_UIVIS) && defined(__linux__)
+        if (!c.flag("batch") && !std::getenv("DISPLAY") && !std::getenv("WAYLAND_DISPLAY"))
+            throw std::runtime_error(
+                "Native event display needs a graphical display. "
+                "For a remote host, reconnect with ssh -Y; use -b 1 for batch.");
 #endif
         auto extra = readMacro(c);
         State state(c);
@@ -430,7 +468,7 @@ int main(int argc, char** argv) {
         rm->SetUserAction(new Tracking(state));
         rm->SetUserAction(new Stepping(state));
         rm->Initialize();
-        displayColors();
+        displayColors(!c.flag("batch"));
         G4SipmUiMessenger::getInstance(); // Register SiPM commands before applying them.
         command("/run/verbose 0");
         command("/event/verbose 0");
@@ -486,20 +524,48 @@ int main(int argc, char** argv) {
             ui = std::make_unique<G4UIExecutive>(uiArgc, uiArgv);
             vis = std::make_unique<G4VisExecutive>("quiet");
             vis->Initialize();
-            command("/vis/open OGL");
+            command("/vis/open OGL 1000x800-0+0");
+            if (!vis->GetCurrentViewer())
+                throw std::runtime_error(
+                    "No OpenGL viewer was created; check the graphical display and X forwarding.");
+            command("/vis/viewer/set/autoRefresh false");
             command("/vis/drawVolume");
             command("/vis/viewer/set/viewpointThetaPhi 65 30");
             command("/vis/viewer/set/style surface");
             command("/vis/viewer/set/background white");
+            command("/vis/viewer/zoom 1.4");
             command("/vis/scene/add/axes 0 0 0 20 mm");
+            command("/vis/modeling/trajectories/create/drawByParticleID");
+            command("/vis/modeling/trajectories/drawByParticleID-0/set gamma red");
+            command("/vis/modeling/trajectories/drawByParticleID-0/set e- blue");
+            command("/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta");
+            command("/vis/modeling/trajectories/drawByParticleID-0/set opticalphoton cyan");
+            command("/vis/scene/add/trajectories");
+            command("/vis/scene/add/hits");
+            command("/vis/scene/endOfEventAction accumulate " + c.text("events"));
+            command("/vis/viewer/set/autoRefresh true");
+            if (ui->IsGUI()) {
+                command("/gui/addMenu pet PET");
+                command("/gui/addButton pet \"Review events\" \"/vis/reviewKeptEvents\"");
+                command("/gui/addButton pet \"Reset angle\" \"/vis/viewer/set/viewpointThetaPhi 65 "
+                        "30\"");
+            }
+            G4cout << "PET_DISPLAY red=gamma blue=electron magenta=positron cyan=optical "
+                      "green=SiPM_hit\n"
+                   << "Native view keeps the run's events for /vis/reviewKeptEvents. "
+                   << "Enter continue between events.\n"
+                   << "Drawing up to " << c.integer("vis-photons")
+                   << " optical paths per event; this does not limit optical transport." << G4endl;
         }
 #endif
         command(seedCommand);
         if (c.text("mode") == "simulation")
             rm->BeamOn(c.integer("events"));
 #ifdef PET_WITH_UIVIS
-        if (ui)
+        if (ui) {
+            command("/vis/viewer/flush");
             ui->SessionStart();
+        }
 #endif
         if (state.totalKilled)
             throw std::runtime_error(

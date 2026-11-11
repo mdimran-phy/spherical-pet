@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise parameter validation without initializing Geant4 transport."""
+import os
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,21 @@ with tempfile.TemporaryDirectory() as temp:
     macro=root/'bad.mac';macro.write_text('/run/beamOn 100\n')
     run('--macro',macro,'-o',root/'not-created',ok=False)
     assert not (root/'not-created').exists()
+    # Fail before creating output when interactive mode has no display.
+    env = os.environ.copy()
+    env.pop('DISPLAY', None)
+    env.pop('WAYLAND_DISPLAY', None)
+    failure = subprocess.run([exe, '-b', '0', '-o', str(root/'no-display')],
+                             env=env, text=True, capture_output=True, timeout=20)
+    assert failure.returncode == 1 and not (root/'no-display').exists()
+    assert ('graphical display' in failure.stderr or 'WITH_GEANT4_UIVIS' in failure.stderr)
+    # Exercise detector-constructor failures and unwinding of its owned sensors.
+    for label, args, message in [
+        ('missing-model', ['--sipm-model', 'HamamatsuS141604050HS'], 'Unavailable SiPM model'),
+        ('narrow-pitch', ['--sipm-pitch-mm', '2'], 'SiPM package does not fit'),
+        ('wide-array', ['--sipm-pitch-mm', '6'], 'SiPM package does not fit')]:
+        failure = run(*args, '-o', root/label, ok=False)
+        assert failure.returncode == 1 and message in failure.stderr
     existing=root/'existing';existing.mkdir();(existing/'keep.txt').write_text('keep')
     run('-o',existing,ok=False)
     assert (existing/'keep.txt').read_text()=='keep'

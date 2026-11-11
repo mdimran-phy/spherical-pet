@@ -29,6 +29,13 @@ target_include_directories(spherical-pet PRIVATE include)
 target_link_libraries(spherical-pet PRIVATE pet_g4sipm)
 if(WITH_GEANT4_UIVIS)
   target_compile_definitions(spherical-pet PRIVATE PET_WITH_UIVIS=1)
+  # Qt platform plugins load private libraries dynamically. On Linux the
+  # executable's RUNPATH does not cover those transitive dependencies. Keep
+  # plugins and libraries on the Qt version selected by Geant4 at configuration.
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET Qt5::Core)
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-env.sh" CONTENT
+      "# Source this file after the Geant4 environment, before native display.\nexport LD_LIBRARY_PATH=\"$<TARGET_FILE_DIR:Qt5::Core>\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}\"\n")
+  endif()
 endif()
 include(GNUInstallDirs)
 install(TARGETS spherical-pet RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -38,6 +45,11 @@ install(FILES README.md LICENSE THIRD_PARTY_NOTICES.md requirements.txt
         DESTINATION ${CMAKE_INSTALL_DATADIR}/spherical-pet)
 include(CTest)
 if(BUILD_TESTING)
+  add_executable(test-detector tests/test_detector.cc src/DetectorConstruction.cc src/Config.cc src/GuideShape.cc)
+  target_include_directories(test-detector PRIVATE include)
+  target_link_libraries(test-detector PRIVATE pet_g4sipm)
+  add_test(NAME detector_geometry COMMAND test-detector pentagon-hexagon)
+  add_test(NAME detector_geometry_octagon COMMAND test-detector pentagon-octagon)
   add_executable(test-guide-shape src/GuideShape.cc tests/test_guide_shape.cc)
   target_include_directories(test-guide-shape PRIVATE include)
   target_link_libraries(test-guide-shape PRIVATE ${Geant4_LIBRARIES})
@@ -50,6 +62,15 @@ if(BUILD_TESTING)
     add_test(NAME cli COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cli.py $<TARGET_FILE:spherical-pet>)
     add_test(NAME transport COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_transport.py $<TARGET_FILE:spherical-pet>)
     set_tests_properties(transport PROPERTIES TIMEOUT 180)
+    if(WITH_GEANT4_UIVIS)
+      find_program(XVFB_RUN_EXECUTABLE xvfb-run)
+      if(XVFB_RUN_EXECUTABLE)
+        add_test(NAME native_display COMMAND ${XVFB_RUN_EXECUTABLE} -a
+          ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_native_display.py
+          $<TARGET_FILE:spherical-pet>)
+        set_tests_properties(native_display PROPERTIES TIMEOUT 150)
+      endif()
+    endif()
   endif()
 endif()
 install(FILES third_party/jansson/LICENSE

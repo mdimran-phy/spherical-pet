@@ -44,6 +44,10 @@ int main() {
         rejects({"--unknown", "1"});
         rejects({"--events"});
         rejects({"--angular", "wrong"});
+        rejects({"--vis-photons", "-1"});
+        rejects({"--vis-photons", "1.5"});
+        require(parse({"--vis-photons", "0"}).integer("vis-photons") == 0,
+                "Can hide optical paths without disabling transport");
         require(parse({}).text("guide-shape") == "pentagon-hexagon", "Original shape default");
         require(parse({"--guide-shape", "pentagon-octagon"}).text("guide-shape") ==
                     "pentagon-octagon",

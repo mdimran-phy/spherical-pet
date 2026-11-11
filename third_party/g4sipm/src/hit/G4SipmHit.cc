@@ -34,7 +34,8 @@ void G4SipmHit::Draw() {
 		G4Circle circle(point);
 		circle.SetScreenSize(2.);
 		circle.SetFillStyle(G4VMarker::filled);
-		circle.SetVisAttributes(new G4VisAttributes(G4Color::Green()));
+		// Let G4Visible own a copy instead of leaking one allocation per redraw.
+	circle.SetVisAttributes(G4VisAttributes(G4Color::Green()));
 		G4VVisManager::GetConcreteInstance()->Draw(circle, transform);
 	}
 }

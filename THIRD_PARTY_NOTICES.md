@@ -10,7 +10,7 @@ Integration changes: Geant4 11 scintillation properties; ascending provisional s
 
 Upstream: https://github.com/c-dilks/g4sipm , branch `geant11-fixes`, commit `53d953ee2427309cfa4d6b94d60f09a28ba1fa20`.
 
-The required `include/`, `src/`, and `resources/` are included under `third_party/g4sipm/`. License: GNU GPL v3, preserved at `third_party/g4sipm/LICENSE`. Original source copyright headers are retained. Integration changes add a water material accessor needed by unused legacy construction code, correct the nominal Bisphenol A elemental formula, and gate per-sensor event logging on verbosity. The reference sensor model and PDE implementation remain upstream code.
+The required `include/`, `src/`, and `resources/` are included under `third_party/g4sipm/`. License: GNU GPL v3, preserved at `third_party/g4sipm/LICENSE`. Original source copyright headers are retained. Integration changes add a water material accessor needed by unused legacy construction code, correct the nominal Bisphenol A elemental formula, gate per-sensor event logging on verbosity, and use owned visualization attributes when drawing hit markers to avoid an allocation leak on redraw. The reference sensor model and PDE implementation remain upstream code.
 
 ## Jansson
 
