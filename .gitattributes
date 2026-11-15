@@ -1,0 +1,5 @@
+# Generated vector paths and immutable teaching snapshots retain original formatting.
+docs/presentations/**/assets/*.svg -whitespace linguist-generated=true
+docs/presentations/**/source_snapshot/** -whitespace linguist-vendored=true
+docs/presentations/**/data/*.csv -whitespace linguist-generated=true
+docs/presentations/**/presentation.html linguist-generated=true
