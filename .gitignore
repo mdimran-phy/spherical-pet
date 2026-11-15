@@ -15,3 +15,7 @@ __pycache__/
 .venv/
 .env
 .DS_Store
+
+# Rebuildable presentation previews and duplicate local download bundles.
+/docs/presentations/*/previews/
+/docs/presentations/*.zip

@@ -88,17 +88,17 @@ for row in g:
     if row['process'] != 'Transportation':
         proj.scatter(float(row['x1_mm']),float(row['z1_mm']),color='#eb492f',marker='*',s=85,zorder=10)
 proj.scatter(0,0,color='black',s=20,zorder=11)
-proj.set(xlim=(-44,44),ylim=(-44,44),xlabel='x [mm]',ylabel='z [mm]',title='x–z projection; dashed circles: LYSO radii')
+proj.set(xlim=(-44,44),ylim=(-44,44),xlabel='x [mm]',ylabel='z [mm]',title='x–z projection; dashed circles: scintillator radii')
 proj.set_aspect('equal')
 timing = fig.add_subplot(gs[1,1])
 times = [float(row['time_ns']) for row in h]
 timing.hist(times,bins=45,color='#278487')
 timing.set(xlabel='Photon arrival time from event origin [ns]',ylabel='Accepted hits',title='SiPM photon arrival times')
 fig.suptitle(f"Spherical PET — event {a.event}",fontsize=22,weight='bold',y=0.98)
-fig.text(0.5,0.91,f"{float(e['edep_lyso_keV']):g} keV deposited in LYSO  •  "
+fig.text(0.5,0.91,f"{float(e.get('edep_scintillator_keV', e.get('edep_lyso_keV'))):g} keV deposited in scintillator  •  "
          f"{int(e['optical_created']):,} optical photons  •  {len(h):,} accepted hits",ha='center',fontsize=12)
 fig.text(0.5,0.06,'Red: saved gamma path and interaction points. Colored dots: hit counts at sensor centers. Gray: sensors with no accepted hits.',ha='center',fontsize=10)
-fig.text(0.5,0.03,'Rear guide wireframe shown for visibility. Optical-photon paths were not saved. Provisional optical and SiPM models.',ha='center',fontsize=10,color='#555555')
+fig.text(0.5,0.03,'Rear guide wireframe shown for visibility. Optical-photon paths are not drawn. Provisional optical and SiPM models.',ha='center',fontsize=10,color='#555555')
 fig.savefig(a.output/f'event_{a.event:03d}.png',dpi=170)
 fig.savefig(a.output/f'event_{a.event:03d}.pdf')
 plt.close(fig)
@@ -108,7 +108,7 @@ for row in events:
     event_id = int(row['event'])
     event_hits = [[int(r['sipm_id']),float(r['time_ns'])] for r in hits if int(r['event'])==event_id]
     event_steps = [[*[float(r[k]) for k in ('x0_mm','y0_mm','z0_mm','x1_mm','y1_mm','z1_mm')],r['process']] for r in steps if int(r['event'])==event_id]
-    payload['events'].append({'id':event_id,'energy':float(row['edep_lyso_keV']),'photons':int(row['optical_created']),'hits':event_hits,'steps':event_steps})
+    payload['events'].append({'id':event_id,'energy':float(row.get('edep_scintillator_keV', row.get('edep_lyso_keV'))),'photons':int(row['optical_created']),'hits':event_hits,'steps':event_steps})
 html='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spherical PET event display</title>
 <style>body{margin:0;background:#101823;color:#eef4fc;font:16px system-ui}main{max-width:1200px;margin:auto;padding:24px}h1{margin:0 0 10px}p{color:#b5c5d8;line-height:1.5}.controls{display:flex;gap:22px;flex-wrap:wrap;align-items:center;background:#1b293b;padding:16px;border-radius:12px}select,button{font:inherit;padding:6px;border-radius:5px}input{width:240px;vertical-align:middle}canvas{width:100%;height:640px;touch-action:none;display:block;background:#0c1420;border-radius:12px;margin-top:16px}.key{display:flex;gap:20px;flex-wrap:wrap;font-size:14px}.bar{display:inline-block;width:100px;height:10px;background:linear-gradient(90deg,hsl(240,85%,58%),hsl(0,85%,58%))}#stats{font-size:18px;color:white}</style>
 <main><h1>Spherical PET event display</h1><p>Drag to rotate · Scroll to zoom · Select an event or restrict photon arrival time.</p>
@@ -124,7 +124,7 @@ function change(){const e=current();gate.max=Math.ceil(Math.max(1,...e.hits.map(
 function project(p){let x=Math.cos(yaw)*p[0]-Math.sin(yaw)*p[1],y=Math.sin(yaw)*p[0]+Math.cos(yaw)*p[1],z=p[2];const v=Math.cos(pitch)*z-Math.sin(pitch)*y,d=Math.sin(pitch)*z+Math.cos(pitch)*y;const s=Math.min(canvas.clientWidth,canvas.clientHeight)/108*zoom;return [canvas.clientWidth/2+x*s,canvas.clientHeight/2-v*s,d]}
 function line(a,b,color,width){const x=project(a),y=project(b);ctx.beginPath();ctx.moveTo(x[0],x[1]);ctx.lineTo(y[0],y[1]);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()}
 function dot(p,color,r){const x=project(p);ctx.beginPath();ctx.arc(x[0],x[1],r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill()}
-function draw(){const w=canvas.clientWidth,h=canvas.clientHeight,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);const e=current(),counts={},all={};let n=0;for(const [id,t] of e.hits){all[id]=(all[id]||0)+1;if(t<=+gate.value){counts[id]=(counts[id]||0)+1;n++}}const peak=Math.max(2,...Object.values(all));document.getElementById('peak').textContent=peak;document.getElementById('time').textContent=(+gate.value).toFixed(1);document.getElementById('stats').textContent=`Event ${e.id} · ${e.energy} keV in LYSO · ${e.photons.toLocaleString()} optical photons · ${n.toLocaleString()} / ${e.hits.length.toLocaleString()} accepted hits within gate`;
+function draw(){const w=canvas.clientWidth,h=canvas.clientHeight,dpr=window.devicePixelRatio||1;canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);const e=current(),counts={},all={};let n=0;for(const [id,t] of e.hits){all[id]=(all[id]||0)+1;if(t<=+gate.value){counts[id]=(counts[id]||0)+1;n++}}const peak=Math.max(2,...Object.values(all));document.getElementById('peak').textContent=peak;document.getElementById('time').textContent=(+gate.value).toFixed(1);document.getElementById('stats').textContent=`Event ${e.id} · ${e.energy} keV in scintillator · ${e.photons.toLocaleString()} optical photons · ${n.toLocaleString()} / ${e.hits.length.toLocaleString()} accepted hits within gate`;
 for(const [a,b] of DATA.edges)line(a,b,'#284d61',0.65);
 const sorted=DATA.sensors.map(s=>({id:s[0],p:s.slice(1),depth:project(s.slice(1))[2]})).sort((a,b)=>b.depth-a.depth);
 for(const s of sorted){const v=counts[s.id]||0;const color=v?`hsl(${240*(1-Math.log(v)/Math.log(peak))},85%,58%)`:'#3d4e60';dot(s.p,color,v?4.1:2.1)}

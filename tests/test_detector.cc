@@ -5,6 +5,11 @@
 #include "G4DigiManager.hh"
 #include "G4DisplacedSolid.hh"
 #include "G4LogicalVolumeStore.hh"
+#include "G4LogicalBorderSurface.hh"
+#include "G4Material.hh"
+#include "G4MaterialPropertiesTable.hh"
+#include "G4OpticalSurface.hh"
+#include <cmath>
 #include "G4PhysicalVolumeStore.hh"
 #include "G4RunManager.hh"
 #include "G4SDManager.hh"
@@ -90,11 +95,13 @@ int main(int argc, char** argv) {
 
         std::map<std::string, G4VPhysicalVolume*> shell;
         int guides = 0, sensors = 0;
+        std::map<std::string, G4VPhysicalVolume*> placed;
         std::vector<G4VSensitiveDetector*> detectors;
         std::vector<G4SipmDigitizer*> digitizers;
         std::vector<G4SipmVoltageTraceDigitizer*> traces;
         for (auto* volume : *G4PhysicalVolumeStore::GetInstance()) {
             const auto& name = volume->GetName();
+            placed[name] = volume;
             if (name == "chapeauPoofMinusHomeOrb_PV")
                 ++guides;
             if (name == "hemisphereNorthScint_PV" || name == "hemisphereNorthGasket_PV" ||
@@ -134,6 +141,40 @@ int main(int argc, char** argv) {
                 for (const auto& [name, volume] : shell)
                     require(contains(volume, point) == (name == expected),
                             "Incorrect hemisphere/gasket partition at " + expected + ": " + name);
+            }
+        }
+        auto* cavity = placed.at("innerCavity_PV");
+        auto* coupling = placed.at("couplingShell_PV");
+        auto* guide = placed.at("chapeauPoofMinusHomeOrb_PV");
+        require(!placed.count("innermost_hemisphere_PV"), "Unconfirmed one-sided liner remains");
+        require(contains(cavity, {0, 0, 24 * mm}) && contains(cavity, {0, 0, -24 * mm}),
+                "Inner cavity must cover both hemispheres");
+        require(contains(coupling, {0, 0, 34.525 * mm}) &&
+                    contains(coupling, {0, 0, -34.525 * mm}), "Full spherical coupling layer");
+        require(guide->GetLogicalVolume()->GetMaterial() != coupling->GetLogicalVolume()->GetMaterial(),
+                "Guide and coupling materials must be independent");
+        for (const std::string side : {"North", "South"}) {
+            auto* scint = shell.at("hemisphere" + side + "Scint_PV");
+            auto* material = scint->GetLogicalVolume()->GetMaterial();
+            require(material->GetName() == "GAGG", "GAGG shell required");
+            require(std::abs(material->GetDensity() / (g / cm3) - 6.63) < 1e-8, "GAGG density");
+            std::set<std::string> symbols;
+            for (const auto* element : *material->GetElementVector())
+                symbols.insert(element->GetSymbol());
+            require(symbols == std::set<std::string>{"Gd", "Al", "Ga", "O"}, "GAGG host chemistry");
+            for (bool reverse : {false, true}) {
+                auto* inner = G4LogicalBorderSurface::GetSurface(reverse ? cavity : scint,
+                                                                reverse ? scint : cavity);
+                auto* outer = G4LogicalBorderSurface::GetSurface(reverse ? coupling : scint,
+                                                                reverse ? scint : coupling);
+                require(inner && outer, "Missing ordered inner/outer border surface");
+                auto* groundSurface = dynamic_cast<G4OpticalSurface*>(inner->GetSurfaceProperty());
+                auto* polishedSurface = dynamic_cast<G4OpticalSurface*>(outer->GetSurfaceProperty());
+                require(groundSurface && groundSurface->GetFinish() == ground &&
+                            groundSurface->GetType() == dielectric_dielectric &&
+                            groundSurface->GetSigmaAlpha() > 0, "Bare ground inner surface");
+                require(polishedSurface && polishedSurface->GetFinish() == polished &&
+                            polishedSurface->GetType() == dielectric_dielectric, "Polished outer surface");
             }
         }
         // Exercise upstream rotation replacement before shutdown: setRotation

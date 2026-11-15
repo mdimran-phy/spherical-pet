@@ -18,7 +18,7 @@ class G4Sipm;
 class G4SipmModel;
 class G4SipmHousing;
 
-// Spherical LYSO detector, faceted guide, and 32 arrays of 4 x 4 SiPMs.
+// Spherical scintillator detector, faceted guide, and 32 arrays of 4 x 4 SiPMs.
 class DetectorConstruction : public G4VUserDetectorConstruction {
   public:
     explicit DetectorConstruction(const Config& settings);

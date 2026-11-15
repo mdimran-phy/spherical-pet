@@ -2,6 +2,8 @@
 // Sequential transport application; detector-response assumptions are documented in
 // docs/physics.md.
 #include "Config.hh"
+#include "GeometryParameters.hh"
+#include <array>
 #include "DetectorConstruction.hh"
 #include "G4LogicalVolumeStore.hh"
 #include "G4PVPlacement.hh"
@@ -63,7 +65,8 @@ struct State {
     const Config& config;
     bool started = false;
     std::set<int> savedOpticalTracks;
-    std::ofstream events, hits, tracks, opticalTracks;
+    std::ofstream events, hits, tracks, opticalTracks, interactions, sensorCounts;
+    std::map<int, int> gammaInteractionCounts;
     int event = 0, optical = 0, scint = 0, cherenkov = 0, killed = 0;
     double edep = 0;
     long totalOptical = 0, totalHits = 0, totalKilled = 0;
@@ -106,17 +109,22 @@ class RunAction : public G4UserRunAction {
             throw std::runtime_error(
                 "One beamOn is supported per invocation; start a new process for another run.");
         s.started = true;
-        for (auto* f : {&s.events, &s.hits, &s.tracks, &s.opticalTracks}) {
+        for (auto* f : {&s.events, &s.hits, &s.tracks, &s.opticalTracks, &s.interactions, &s.sensorCounts}) {
             f->exceptions(std::ios::failbit | std::ios::badbit);
             f->precision(12);
         }
         s.opticalTracks.open(s.out / "optical_steps.csv");
         s.opticalTracks << "event,track_id,parent_id,step,x0_mm,y0_mm,z0_mm,x1_mm,y1_mm,z1_mm,t0_"
                            "ns,t1_ns,process\n";
+        s.interactions.open(s.out / "gamma_interactions.csv");
+        s.interactions << "event,track_id,parent_id,interaction_index,process,time_ns,x_mm,y_mm,z_mm,"
+                          "pre_energy_keV,post_energy_keV,local_edep_keV,material\n";
+        s.sensorCounts.open(s.out / "sipm_counts.csv");
+        s.sensorCounts << "event,sipm_id,photon_count\n";
         s.events.open(s.out / "events.csv");
         s.hits.open(s.out / "sipm_hits.csv");
         s.tracks.open(s.out / "gamma_steps.csv");
-        s.events << "event,edep_lyso_keV,optical_created,scintillation_created,cherenkov_created,"
+        s.events << "event,edep_scintillator_keV,optical_created,scintillation_created,cherenkov_created,"
                     "sipm_accepted_hits,guard_killed_tracks\n";
         s.hits << "event,sipm_id,track_id,time_ns,energy_eV,x_mm,y_mm,z_mm\n";
         s.tracks
@@ -127,11 +135,14 @@ class RunAction : public G4UserRunAction {
         s.hits.close();
         s.tracks.close();
         s.opticalTracks.close();
+        s.interactions.close();
+        s.sensorCounts.close();
         std::ofstream f(s.out / "summary.json");
         f.exceptions(std::ios::failbit | std::ios::badbit);
         f.precision(12);
-        f << "{\n  \"events\": " << r->GetNumberOfEvent()
-          << ",\n  \"edep_lyso_keV\": " << s.totalEdep
+        f << "{\n  \"schema_version\": 2,\n  \"scintillator\": \""
+          << s.config.text("scintillator") << "\",\n  \"events\": " << r->GetNumberOfEvent()
+          << ",\n  \"edep_scintillator_keV\": " << s.totalEdep
           << ",\n  \"optical_created\": " << s.totalOptical
           << ",\n  \"sipm_accepted_hits\": " << s.totalHits
           << ",\n  \"guard_killed_tracks\": " << s.totalKilled << ",\n  \"optical_endings\": {";
@@ -156,11 +167,13 @@ class EventAction : public G4UserEventAction {
     void BeginOfEventAction(const G4Event* e) override {
         s.event = e->GetEventID();
         s.savedOpticalTracks.clear();
+        s.gammaInteractionCounts.clear();
         s.edep = 0;
         s.optical = s.scint = s.cherenkov = s.killed = 0;
     }
     void EndOfEventAction(const G4Event* e) override {
         long n = 0;
+        std::array<long, GeometryParameters::sensorCount> counts{};
         auto* hc = e->GetHCofThisEvent();
         if (hc)
             for (int j = 0; j < hc->GetCapacity(); ++j) {
@@ -173,9 +186,14 @@ class EventAction : public G4UserEventAction {
                     s.hits << s.event << "," << h->getSipmId() << "," << h->getTrackId() << ","
                            << h->getTime() / ns << "," << h->getEKin() / eV << "," << p.x() / mm
                            << "," << p.y() / mm << "," << p.z() / mm << "\n";
+                    if (h->getSipmId() < 0 || h->getSipmId() >= GeometryParameters::sensorCount)
+                        throw std::runtime_error("Accepted hit has an invalid sensor ID");
+                    ++counts[h->getSipmId()];
                     ++n;
                 }
             }
+        for (size_t id = 0; id < counts.size(); ++id)
+            s.sensorCounts << s.event << ',' << id << ',' << counts[id] << '\n';
         s.events << s.event << "," << s.edep / keV << "," << s.optical << "," << s.scint << ","
                  << s.cherenkov << "," << n << "," << s.killed << "\n";
         s.totalOptical += s.optical;
@@ -231,12 +249,25 @@ class Stepping : public G4UserSteppingAction {
     void UserSteppingAction(const G4Step* st) override {
         auto* t = st->GetTrack();
         bool opt = t->GetDefinition() == G4OpticalPhoton::Definition();
-        if (!opt && st->GetPreStepPoint()->GetMaterial()->GetName() == "LYSO")
+        const bool inScintillator = st->GetPreStepPoint()->GetMaterial()->GetName() ==
+                                     s.config.text("scintillator");
+        if (!opt && inScintillator)
             s.edep += st->GetTotalEnergyDeposit();
         if (t->GetDefinition()->GetParticleName() == "gamma") {
             auto a = st->GetPreStepPoint()->GetPosition(),
                  b = st->GetPostStepPoint()->GetPosition();
             auto* pr = st->GetPostStepPoint()->GetProcessDefinedStep();
+            if (inScintillator && pr && pr->GetProcessName() != "Transportation") {
+                const int index = ++s.gammaInteractionCounts[t->GetTrackID()];
+                s.interactions << s.event << ',' << t->GetTrackID() << ',' << t->GetParentID()
+                    << ',' << index << ',' << pr->GetProcessName() << ','
+                    << st->GetPostStepPoint()->GetGlobalTime() / ns << ','
+                    << b.x() / mm << ',' << b.y() / mm << ',' << b.z() / mm << ','
+                    << st->GetPreStepPoint()->GetKineticEnergy() / keV << ','
+                    << st->GetPostStepPoint()->GetKineticEnergy() / keV << ','
+                    << st->GetTotalEnergyDeposit() / keV << ','
+                    << s.config.text("scintillator") << '\n';
+            }
             s.tracks << s.event << "," << t->GetTrackID() << "," << t->GetParentID() << ","
                      << a.x() / mm << "," << a.y() / mm << "," << a.z() / mm << "," << b.x() / mm
                      << "," << b.y() / mm << "," << b.z() / mm << ","
@@ -417,7 +448,7 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (c.versionRequested) {
-            std::cout << "spherical-pet 0.1.0\n" << G4Version << "\n";
+            std::cout << "spherical-pet 0.2.0\n" << G4Version << "\n";
 #ifdef PET_WITH_UIVIS
             std::cout << "Native event display: enabled (use -b 0)\n";
 #else
@@ -455,7 +486,7 @@ int main(int argc, char** argv) {
         }
         {
             std::ofstream f(state.out / "build.txt");
-            f << "spherical-pet 0.1.0\n"
+            f << "spherical-pet 0.2.0\n"
               << G4Version << "\nCompiler: " << __VERSION__ << "\nSequential Geant4 run manager\n";
         }
         CLHEP::HepRandom::setTheSeed(c.integer("seed"));

@@ -1,0 +1,39 @@
+{
+  "starting_revision": "c09afe7",
+  "application_version": "0.2.0",
+  "source_sha256": {
+    "src/Config.cc": "1fd98ed28a7f5769406a8048d5d5a7c297d971566ac2803358e1d04038322f1d",
+    "src/DetectorConstruction.cc": "8a253da7414b413d13a175d03f2d32cd43f506256cfb9cf212a42e335047d50b",
+    "src/main.cc": "3fae88f84cde746508729044ef87f3a83ce7bd715e72754ae5a8dc3620f134e5",
+    "include/Config.hh": "4266779fe59d668ae8fbdf821be4170ca91e2bb69d0cbd4fc5a308dca38b6692",
+    "include/DetectorConstruction.hh": "1b64842c2c7fb489f424e780f10761f23df38b6143744e227faace0265ab103d",
+    "include/GeometryParameters.hh": "a6c52d4968246430e6ddac26b1466c9820d65a52dc2861d3669b6d1814ce64e3",
+    "CMakeLists.txt": "026a34361ce55ec6ed2798d2a8ee687bf3634ff49c72eb04df7779c06a067ddc",
+    "config/default.conf": "ea67b82977bb78541664053b08418007ad99afafd91e8a8ef5bb3278c44338b6",
+    "config/ray_baseline.conf": "377e7b5136f2794345815699672f421387726f0c443c117b078eff95532456e0",
+    "config/lyso_comparison.conf": "04a5b1e0c5e0f4280654d931c996de9ffd7bbebceec2c127d98c3f723ee2c5db"
+  },
+  "ctest_passed": 7,
+  "run_directory": "results/ray_baseline_20261113",
+  "summary": {
+    "schema_version": 2,
+    "scintillator": "GAGG",
+    "events": 10,
+    "edep_scintillator_keV": 1882.12381162,
+    "optical_created": 107474,
+    "sipm_accepted_hits": 5295,
+    "guard_killed_tracks": 0,
+    "optical_endings": {
+      "OpAbsorption": 36649,
+      "boundary_status_9": 57926,
+      "sensor_sensitive_volume": 12742,
+      "world_escape": 157
+    }
+  },
+  "geometry_check": {
+    "volumes_checked": 2056,
+    "volumes_reporting_overlaps": 0,
+    "samples_per_volume": 1000,
+    "tolerance_mm": 0.001
+  }
+}

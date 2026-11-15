@@ -104,7 +104,7 @@ for sensor_id,point in zip(ids,positions):
 hits=rows('sipm_hits.csv');steps=rows('gamma_steps.csv')
 for e in rows('events.csv'):
     i=int(e['event'])
-    payload['events'].append({'id':i,'edep':float(e['edep_lyso_keV']),'photons':int(e['optical_created']),
+    payload['events'].append({'id':i,'edep':float(e.get('edep_scintillator_keV', e.get('edep_lyso_keV'))),'photons':int(e['optical_created']),
         'hits':[[int(h['sipm_id']),float(h['time_ns'])] for h in hits if int(h['event'])==i],
         'steps':[[*[float(s[k]) for k in ['x0_mm','y0_mm','z0_mm','x1_mm','y1_mm','z1_mm']],s['process']] for s in steps if int(s['event'])==i]})
 (OUT/'photo_display_geometry.json').write_text(json.dumps(payload,separators=(',',':')))
@@ -177,7 +177,7 @@ fontpath=font_manager.findfont('DejaVu Sans')
 font=lambda size:ImageFont.truetype(fontpath,size)
 def center(text,y,size,color='#263141'):
     f=font(size);box=draw.textbbox((0,0),text,font=f);draw.text(((W-(box[2]-box[0]))/2,y),text,font=f,fill=color)
-center('Spherical PET — hemispherical model',42,39)
+center('Spherical PET — upper-hemisphere view',42,39)
 center('Purple scintillator · clear faceted light guide · demonstration cutaway',102,23,'#606975')
 center('Actual exported geometry; upper hemisphere shown',1182,25)
 center('Guide sections are hidden for presentation. Simulation geometry is unchanged.',1224,20,'#606975')

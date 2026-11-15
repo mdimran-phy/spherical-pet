@@ -33,6 +33,13 @@ Create a public repository named `spherical-pet` under `mdimran-phy`. Leave GitH
 
 ## Source archive
 
-The prepared `spherical-pet-0.1.0.zip` is a clean source snapshot. GitHub's “Upload files” flow does not unpack a ZIP automatically; extract it and upload its contents, or use Git. Do not upload `build/`, simulation output, the old `pet_run_20261029` working directory, or authentication files.
+GitHub’s **Code → Download ZIP** provides a source snapshot, including the checked-in course materials. GitHub's “Upload files” flow does not unpack a ZIP automatically; extract it and upload its contents, or use Git. Do not upload `build/`, simulation output, the old `pet_run_20261029` working directory, or authentication files.
 
 After publishing, verify a fresh clone builds and `ctest --test-dir build --output-on-failure` passes in a configured Geant4 environment. A GitHub release may attach the source ZIP, but the repository itself should contain the actual source files.
+
+
+## Current publication contents
+
+The main README links the GAGG baseline, build/run instructions, native and offline displays, and the 112-slide beginner presentation. Curated course PDFs, PPTX, HTML, diagrams, source excerpts and small reference datasets are included. Local presentation ZIP bundles, generated slide previews, build products and raw simulation run directories remain ignored.
+
+The GitHub repository was initialized separately with a one-line README. Preserve that initial commit when combining the histories: merge the remote history and resolve the README using the complete project documentation. Do not force-push over it.

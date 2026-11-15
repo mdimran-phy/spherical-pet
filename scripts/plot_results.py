@@ -55,7 +55,7 @@ for panel in (1, 2):
     ax.view_init(elev=20, azim=-65)
     ax.set_title('Complete detector' if panel == 1 else 'Rear half shown to expose the cavity')
 fig.suptitle('Spherical PET: actual Geant4 geometry', fontsize=17, weight='bold')
-fig.legend(handles=[Patch(color='#873caf', label='LYSO shell'),
+fig.legend(handles=[Patch(color='#873caf', label='scintillator shell'),
                     Patch(color='#65c9dd', label='Faceted light guide'),
                     Patch(color='#1e6661', label='512 reference SiPM housings')],
            loc='lower center', ncol=3, bbox_to_anchor=(0.5, 0.055), frameon=False)
@@ -80,8 +80,8 @@ with (args.input / 'sensor_positions.csv').open() as f:
 assert len(sensors) == 512
 assert len({s['sd_name'] for s in sensors}) == 512
 fig, axs = plt.subplots(2, 2, figsize=(11, 7.5), constrained_layout=True)
-axs[0, 0].bar(events['event'], events['edep_lyso_keV'], color='#873caf')
-axs[0, 0].set(xlabel='Event', ylabel='LYSO energy deposit [keV]', xticks=range(len(events)))
+axs[0, 0].bar(events['event'], events['edep_scintillator_keV' if 'edep_scintillator_keV' in events.dtype.names else 'edep_lyso_keV'], color='#873caf')
+axs[0, 0].set(xlabel='Event', ylabel='scintillator energy deposit [keV]', xticks=range(len(events)))
 axs[0, 1].bar(events['event'] - 0.19, events['optical_created'], width=0.38,
                label='Optical photons created', color='#65b8cd')
 axs[0, 1].bar(events['event'] + 0.19, events['sipm_accepted_hits'], width=0.38,

@@ -30,7 +30,7 @@ const std::vector<Option>& Config::options() {
         {"source-x-mm", "-gx", "0", "Source x position [mm]"},
         {"source-y-mm", "-gy", "0", "Source y position [mm]"},
         {"source-z-mm", "-gz", "0", "Source z position [mm]"},
-        {"shell-thickness-mm", "", "10", "LYSO shell thickness [mm]; outer radius remains 34.5 mm"},
+        {"shell-thickness-mm", "", "10", "Scintillator shell thickness [mm]; outer radius remains 34.5 mm"},
         {"guide-shape", "", "pentagon-hexagon",
          "pentagon-hexagon (supplied) or pentagon-octagon (beveled variant)"},
         {"guide-bevel-fraction", "", "0.25",
@@ -38,17 +38,32 @@ const std::vector<Option>& Config::options() {
         {"sipm-pitch-mm", "", "4.4", "Sensor center pitch in each 4x4 array [mm]"},
         {"sipm-model", "", "HamamatsuS1036233100",
          "Built-in G4SiPM model name; package must fit array pitch"},
+        {"scintillator", "", "GAGG", "Scintillator material: GAGG (baseline) or LYSO"},
+        {"gagg-yield", "", "57", "Provisional GAGG scintillation photons per keV"},
+        {"gagg-decay-ns", "", "88", "Provisional single-component GAGG decay [ns]"},
+        {"gagg-index", "", "1.9", "Constant GAGG refractive index"},
+        {"gagg-absorption-mm", "", "1000", "Assumed GAGG absorption length [mm], unmeasured"},
         {"lyso-yield", "", "32", "Scintillation photons per keV"},
         {"lyso-decay-ns", "", "41", "Scintillation decay time [ns]"},
         {"lyso-index", "", "1.81", "Constant LYSO refractive index"},
         {"lyso-absorption-mm", "", "413", "Constant LYSO optical absorption length [mm]"},
-        {"scint-energy-ev", "", "2.8", "Center of provisional flat scintillation spectrum [eV]"},
+        {"scint-energy-ev", "", "auto", "Flat spectrum center [eV]; auto: GAGG 520 nm, LYSO 2.8 eV"},
         {"scint-width-ev", "", "0.02", "Full width of provisional flat spectrum [eV]"},
         {"spectrum", "", "", "Optional CSV: energy_eV,intensity; overrides flat spectrum"},
         {"epoxy-index", "", "1.5",
-         "Shared epoxy index: guide, gaskets and reference sensor window"},
+         "Reference sensor-window and outer-mask epoxy index (not guide/coupling)"},
         {"epoxy-absorption-mm", "", "0",
-         "Shared epoxy absorption [mm]; 0 leaves bulk absorption unset"},
+         "Reference window/mask absorption [mm]; 0 disables bulk absorption"},
+        {"guide-index", "", "1.5", "Provisional guide resin refractive index"},
+        {"guide-absorption-mm", "", "1000", "Assumed guide absorption [mm]; 0 disables"},
+        {"coupling-index", "", "1.43", "Provisional Encapso-surrogate refractive index"},
+        {"coupling-absorption-mm", "", "1000", "Assumed coupling absorption [mm]; 0 disables"},
+        {"coupling-thickness-mm", "", "0.05", "Radial coupling layer [mm], taken from guide volume (0 < t <= 0.5)"},
+        {"inner-surface", "", "bare", "Ground inner boundary: bare, reflector, or absorber"},
+        {"inner-sigma-alpha-rad", "", "0.1", "Assumed ground-surface microfacet roughness [rad]"},
+        {"inner-reflectivity", "", "0.98", "Reflector-mode inner reflectivity [0..1]"},
+        {"guide-boundary", "", "absorber", "Exposed guide/mask boundary: bare, reflector, or absorber"},
+        {"guide-reflectivity", "", "0.98", "Reflector-mode guide reflectivity [0..1]"},
         {"pde-filter", "", "1", "Enable upstream SiPM photon-detection-efficiency filter [0/1]"},
         {"cell-filter", "", "1", "Enable SiPM cell-geometry filter [0/1]"},
         {"range-cut-mm", "", "0.1", "Electromagnetic production range cut [mm]"},
@@ -198,17 +213,31 @@ void Config::validate() const {
     if (text("angular") != "fixed" && text("angular") != "isotropic")
         throw std::runtime_error("--angular must be fixed or isotropic");
     for (const auto& key : {"energy-kev", "shell-thickness-mm", "sipm-pitch-mm", "lyso-decay-ns",
-                            "lyso-absorption-mm", "scint-width-ev", "range-cut-mm"})
+                            "lyso-absorption-mm", "gagg-decay-ns", "gagg-absorption-mm",
+                            "coupling-thickness-mm", "scint-width-ev", "range-cut-mm"})
         if (number(key) <= 0)
             throw std::runtime_error(std::string("--") + key + " must be positive");
-    if (number("shell-thickness-mm") >=
-        GeometryParameters::shellOuterRadiusMm - GeometryParameters::innerLinerThicknessMm)
-        throw std::runtime_error(
-            "Shell thickness must be below 33.5 mm to leave room for the 1 mm inner liner");
-    if (number("lyso-yield") < 0 || number("epoxy-absorption-mm") < 0)
-        throw std::runtime_error("Yield and epoxy absorption cannot be negative");
-    if (number("lyso-index") < 1 || number("epoxy-index") < 1)
-        throw std::runtime_error("Refractive indices must be at least 1");
+    if (text("scintillator") != "GAGG" && text("scintillator") != "LYSO")
+        throw std::runtime_error("--scintillator must be GAGG or LYSO");
+    if (number("shell-thickness-mm") >= GeometryParameters::shellOuterRadiusMm)
+        throw std::runtime_error("Shell thickness must be below 34.5 mm");
+    if (number("coupling-thickness-mm") > 0.5)
+        throw std::runtime_error("Coupling thickness must be at most 0.5 mm");
+    for (const auto& key : {"lyso-yield", "gagg-yield", "epoxy-absorption-mm",
+                            "guide-absorption-mm", "coupling-absorption-mm"})
+        if (number(key) < 0)
+            throw std::runtime_error(std::string("--") + key + " cannot be negative");
+    for (const auto& key : {"lyso-index", "gagg-index", "epoxy-index", "guide-index", "coupling-index"})
+        if (number(key) < 1)
+            throw std::runtime_error("Refractive indices must be at least 1");
+    for (const auto& key : {"inner-surface", "guide-boundary"})
+        if (text(key) != "bare" && text(key) != "reflector" && text(key) != "absorber")
+            throw std::runtime_error(std::string("--") + key + " must be bare, reflector, or absorber");
+    for (const auto& key : {"inner-reflectivity", "guide-reflectivity"})
+        if (number(key) < 0 || number(key) > 1)
+            throw std::runtime_error(std::string("--") + key + " must be in [0,1]");
+    if (number("inner-sigma-alpha-rad") < 0 || number("inner-sigma-alpha-rad") > 1)
+        throw std::runtime_error("Inner roughness must be in [0,1] rad");
     if (number("theta") < 0 || number("theta") > 180)
         throw std::runtime_error("--theta must be 0..180 degrees");
     number("phi");
@@ -234,7 +263,10 @@ void Config::validate() const {
 std::vector<std::pair<double, double>> Config::spectrum() const {
     std::vector<std::pair<double, double>> result;
     if (text("spectrum").empty()) {
-        const double c = number("scint-energy-ev"), w = number("scint-width-ev");
+        const double c = text("scint-energy-ev") == "auto"
+                             ? (text("scintillator") == "GAGG" ? 1239.841984 / 520.0 : 2.8)
+                             : number("scint-energy-ev");
+        const double w = number("scint-width-ev");
         result = {{c - w / 2, 1}, {c, 1}, {c + w / 2, 1}};
     } else {
         std::ifstream f(text("spectrum"));
@@ -281,7 +313,7 @@ void Config::write(std::ostream& out) const {
     }
 }
 void Config::help(std::ostream& out) const {
-    out << "spherical-pet 0.1.0 — Geant4 spherical PET optical simulation\n\n"
+    out << "spherical-pet 0.2.0 — Geant4 spherical PET optical simulation\n\n"
         << "Usage: spherical-pet [--config FILE] [OPTION VALUE ...]\n"
         << "Example: spherical-pet -r 0 -e 10 -x gamma -E 511 -theta 0 -seed 42 -o "
            "results/run42\n\n"

@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-15",
+  "slides": 112,
+  "chapters": 10,
+  "all_slides_have_code": true,
+  "all_slides_have_notes": true,
+  "all_teaching_python_compiles": true,
+  "all_shell_examples_pass_bash_n": true,
+  "pptx_package_reopened": true,
+  "pptx_shapes_inside_canvas": true,
+  "minimum_code_font_pt": 12.3,
+  "reference_data_checks": "passed; see teaching_examples.py",
+  "native_captures": "0, 5 and 100 optical display paths each reproduce 29002 created and 1099 accepted",
+  "pdf_rendered_pages": 112,
+  "source_sha256": {
+    "src/Config.cc": "1fd98ed28a7f5769406a8048d5d5a7c297d971566ac2803358e1d04038322f1d",
+    "src/DetectorConstruction.cc": "8a253da7414b413d13a175d03f2d32cd43f506256cfb9cf212a42e335047d50b",
+    "src/main.cc": "3fae88f84cde746508729044ef87f3a83ce7bd715e72754ae5a8dc3620f134e5",
+    "include/GeometryParameters.hh": "a6c52d4968246430e6ddac26b1466c9820d65a52dc2861d3669b6d1814ce64e3",
+    "config/ray_baseline.conf": "377e7b5136f2794345815699672f421387726f0c443c117b078eff95532456e0",
+    "docs/ray_baseline.md": "ee1a0d71af5b7fcc392b017b692b5546d97993d5136373f78ef0351f65a77b66",
+    "docs/event_display_guide.md": "9b404869b4942034c9899602f5436f11b524e39821cc8eddbe7b4dd88ea55262",
+    "docs/output.md": "bdad8cbb36b4859a214ee0fc3fdb9c4db47c27a2ae5279f0f339b3f5578f6d81",
+    "docs/parameters.md": "b97b32d30ec76e98d691198f4945b93b4132b5ee48e1186b3ca87cfc20b47221",
+    "docs/physics.md": "0aa56ad20edc1fbe157f39a8314b628a1a0cb98aa563914acd00a8e74613ab00",
+    "docs/validation.md": "7f96c0301d1fe94e6b96e812362ea19890d7522552792ead960e906d07ddf1d9",
+    "third_party/g4sipm/src/hit/G4SipmSensitiveDetector.cc": "c67ba8e1e187f9836bb56f72409cc81aa41a1f7cc4789eb7f7d2f27e092ad250",
+    "third_party/g4sipm/src/hit/G4SipmSensitiveDetectorFilter.cc": "ad8caa9dda136e8689cbd068905a3e56cea474885b9b89fa3d4add7d638c86b5",
+    "third_party/g4sipm/LICENSE": "589ed823e9a84c56feb95ac58e7cf384626b9cbf4fda2a907bc36e103de1bad2"
+  },
+  "rendering_note": "PDF and PPTX use one authored layout. PDF pages rendered with Poppler. Native PowerPoint rendering not available on this host; PPTX reopened and checked structurally.",
+  "physical_validation_note": "Presentation checks do not establish detector calibration or experimental accuracy.",
+  "native_capture_csv_matches": {
+    "gamma": [
+      "events.csv",
+      "sipm_hits.csv",
+      "sipm_counts.csv",
+      "gamma_interactions.csv"
+    ],
+    "five": [
+      "events.csv",
+      "sipm_hits.csv",
+      "sipm_counts.csv",
+      "gamma_interactions.csv"
+    ],
+    "hundred": [
+      "events.csv",
+      "sipm_hits.csv",
+      "sipm_counts.csv",
+      "gamma_interactions.csv"
+    ]
+  },
+  "html_interaction_checks": "Node DOM harness: navigation, Home/End, notes toggle, chapter selection and search passed; no browser render engine available.",
+  "visual_review": "All seven contact sheets reviewed; selected full-size slides and handout pages reviewed.",
+  "data_sha256": {
+    "events.csv": "982c4f88d416ff19b9e81551a900acda104b2fdf48d15041133c2ee6c18667ea",
+    "gamma_interactions.csv": "c42d8c8ee9186760dabfc66f60717fb5e38b06ee5aa98d51692e9d97a6e96d89",
+    "gamma_steps.csv": "1d06b47c9797f035ae7384b7699385fea938e677b9fcdbcbc14ecfd1daf2bd97",
+    "geometry_check.json": "3ea942d2e0ae38985a40566fe69b57169d7e0b9843a3228aadddcb60ef954983",
+    "guide_sections.csv": "deaae0607a539cd091c11d1d4d2445e14b52783808df579f8524ce1f428fc8c5",
+    "resolved.conf": "348e5404b3cb3ae8a8ebf62062870bc66baaf12b2e495ff71de94ef3a05bf1a9",
+    "sensor_positions.csv": "3a636310352210dfa26cb3e1e292dae6b68580f7651668bb6afe18c56c99532b",
+    "sipm_counts.csv": "9a4bc1ed6852ede29dda7f9fc5c9c7744ee8d339afc33762b17274e60d6ed078",
+    "sipm_hits.csv": "f8dd28c9395f6617d0732c619bfe218c9e8f5f9109c4183a4e597e348995b760",
+    "source_commands.mac": "e6a4be5ad4406bff8f13f094d7a298f97bbca835a790657c3b9a8216fd954935",
+    "summary.json": "55e8c783ba114494efee25c1013095459e1583064f99d1b28f6f6394d7eaeb94"
+  }
+}

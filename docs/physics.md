@@ -4,26 +4,59 @@
 
 Sequential Geant4 with Livermore electromagnetic physics, decay physics, and optical physics. The default electromagnetic production range cut is 0.1 mm. The default source is one 511 keV gamma per event at the origin, directed along +z. This is not a coincidence PET source. Positron primary kinetic energy is specified separately with `-x e+ -E ...`; annihilation then follows electromagnetic transport.
 
-Both LYSO hemispheres are placed. The scintillator outer radius is 34.5 mm; default inner radius is 24.5 mm. The default guide is a faceted solid with 12 pentagonal and 20 hexagonal regions leading to square sensor-array outlets. `--guide-shape pentagon-octagon` subtracts corner bevels to produce 20 irregular octagonal shoulders; removed material becomes air. See [geometry](geometry.md) for the construction. The optical outlet plane is at radial distance 39.5 mm along each array normal. The default reference sensor housing is shifted outward by half its depth so its window entrance contacts the outlet. The source places one inner hemispherical liner, so optical boundaries are not symmetric between hemispheres. This behavior is retained and must be reviewed before interpreting hemispheric response differences.
+Both scintillator hemispheres are placed. The outer radius is 34.5 mm and the
+default inner radius is 24.5 mm. The default guide has 12 pentagonal and 20
+hexagonal regions and fixed 39.5 mm outlet planes. The octagon variant remains
+an optional derived geometry, outside Dr. Ray's baseline.
 
-## Default materials
+## Materials and surfaces
 
-LYSO retains the supplied density of 7.36 g/cm³ and elemental mass fractions. Default yield is 32 photons/keV, decay constant 41 ns, refractive index 1.81, and absorption length 413 mm. The original repeated energy grid was invalid; the default now uses a provisional flat 2.79–2.81 eV spectrum. This is not a measured LYSO spectrum.
+GAGG is the default; `--scintillator LYSO` enables a comparison material.
+GAGG uses the Gd3Al2Ga3O12 host composition and density 6.63 g/cm³. Its provisional
+optics are 57 photons/keV, a single 88 ns decay, refractive index 1.9, and an
+**assumed**, unmeasured 1000 mm absorption length. Trace Ce is represented through
+the scintillation response, not an explicit dopant mass fraction.
+LYSO retains density 7.36 g/cm³, the prior elemental fractions, 32 photons/keV,
+41 ns, index 1.81, and 413 mm absorption length.
 
-A custom spectrum is a CSV with header `energy_eV,intensity` and strictly increasing energies within 1–6 eV. Intensities must be nonnegative with at least one positive value. The column represents the spectrum in photon energy; a measured spectrum given per wavelength requires the appropriate variable conversion before use. Example:
+`scint-energy-ev = auto` centers a provisional flat spectrum at 1239.841984/520 eV
+for GAGG or 2.8 eV for LYSO, with full width 0.02 eV. This is a transport placeholder,
+not a measured emission spectrum. `--spectrum` accepts energy_eV,intensity CSV
+with at least two strictly increasing energies in 1–6 eV and finite nonnegative
+intensities with positive total. A wavelength-density spectrum must be converted
+with its Jacobian before use. Constant material RINDEX and ABSLENGTH span 1–6 eV
+independently of the scintillation-emission interval.
 
-```csv
-energy_eV,intensity
-2.6,0
-2.8,1
-3.0,0
-```
+Guide resin, coupling, and reference sensor-window epoxy are separate materials.
+The guide surrogate is C15H16O2 at 1.2 g/cm³; coupling is a silicone-like C2H6OSi
+surrogate at 1.0 g/cm³. Neither composition is a measured product specification.
+Guide index is provisionally 1.5; coupling index 1.43; both assumed absorption
+lengths are 1000 mm. Their optical parameters are independently configurable.
+The existing equatorial 0.1 mm seam uses coupling material. A 0.05 mm radial
+coupling layer occupies part of the former guide volume; scintillator and outlet
+dimensions remain fixed. Sensor windows contact the guide directly; a separate
+sensor-side adhesive thickness is not yet modeled.
 
-This example is illustrative, not calibration data. Refractive index and absorption length remain constant over the supplied energy grid.
+A full air cavity replaces the historical one-sided epoxy liner. Both radial
+inner interfaces use UNIFIED ground surfaces, with provisional sigma_alpha=0.1 rad
+and specular-lobe weight 1 (reflection about sampled microfacet normals).
+The baseline assumes **bare** inner surfaces. Optional reflector/absorber modes
+are assumptions for studies, not confirmed coatings. Scintillator-to-coupling
+outer interfaces are explicitly polished dielectric boundaries. Border surfaces
+are installed in both directions.
 
-The generic guide epoxy is modeled as C15H16O2 with density 1.2 g/cm³ and refractive index 1.5. The upstream nominal Bisphenol A formula contained silicon; the integration corrects that atom to carbon. There is no epoxy bulk absorption by default. `--epoxy-index` and `--epoxy-absorption-mm` affect the shared epoxy material, including gaskets and reference sensor windows, not just the guide. The photographed resin and coupling layers have not been measured or modeled independently.
+Exposed guide-to-air and guide-to-mask boundaries default to absorption, retaining
+the earlier black-mask intent and extending it to exposed guide regions. A bare
+or reflective boundary can be selected. Coatings use zero detection efficiency;
+only accepted sensor records count as SiPM hits. Ground finish does not imply a
+perfect reflector. See [the maintained baseline record](ray_baseline.md) for
+parameter sources, limitations and open inputs.
 
-The upstream ceramic sensor package has no optical refractive index, causing NoRINDEX termination at applicable boundaries. Idealized reflective/absorptive surfaces from the supplied detector are retained. In particular, the absorbing outer boundary can produce Geant4's surface Detection status; it is excluded from accepted SiPM hit counts.
+The reference sensor ceramic has no optical refractive index, so NoRINDEX
+termination can still occur there. The `epoxy-*` options now affect only the
+reference window and outer-mask material; use `guide-*` and `coupling-*` for
+those separate components. The corrected surfaces and additional coupling layer
+mean LYSO mode does not reproduce old reference runs bit for bit.
 
 ## Sensors
 

@@ -11,7 +11,7 @@ def run(*args, ok=True):
     assert (p.returncode == 0) == ok, (args,p.returncode,p.stdout,p.stderr)
     return p
 assert '--shell-thickness-mm' in run('--help').stdout
-assert '0.1.0' in run('--version').stdout
+assert '0.2.0' in run('--version').stdout
 for args in [('-e','-1'),('--energy-kev','nan'),('--seed','0'),('--theta','181'),('--cell-filter','2'),('--typo','1'),('--energy-kev',),('--particle','proton'),('--source-z-mm','100')]:
     run(*args,ok=False)
 with tempfile.TemporaryDirectory() as temp:

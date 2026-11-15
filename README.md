@@ -1,10 +1,42 @@
 # spherical-pet
 
-A standalone Geant4 application for a spherical LYSO PET detector with a faceted light guide and SiPM arrays. It provides an `eicdirc`-style command line, configuration files, optical-photon transport, CSV output, and offline event displays.
+A standalone Geant4 application for a spherical GAGG PET detector with a faceted light guide and SiPM arrays. It provides an `eicdirc`-style command line, configuration files, optical-photon transport, CSV output, and offline event displays.
 
-![Purple scintillator and clear light-guide cutaway](docs/images/detector.png)
+![Current GAGG detector and 100 optical trajectories](docs/presentations/beginner_20261115/assets/native_hundred_crop.png)
 
-The current simulation constructs a **full sphere**, with **512 SiPMs in 32 arrays of 4 × 4**, and **12 pentagonal plus 20 hexagonal guide sections by default**. The image shows an upper-hemisphere cutaway for presentation. Select `--guide-shape pentagon-octagon` for a derived geometry with 20 irregular octagonal shoulders, made by beveling two opposite corners of each hexagonal section. See [guide geometry](docs/geometry.md) for the construction and its limits. Detector-response parameters are provisional; coincidence selection and PET image reconstruction are not implemented.
+The current simulation constructs a **full sphere**, with **512 SiPMs in 32 arrays of 4 × 4**, and **12 pentagonal plus 20 hexagonal guide sections by default**. The image shows the native Geant4 display of one seed-42 event with 100 optical trajectories drawn; all optical photons are transported. Select `--guide-shape pentagon-octagon` for a derived geometry with 20 irregular octagonal shoulders, made by beveling two opposite corners of each hexagonal section. See [guide geometry](docs/geometry.md) for the construction and its limits. Detector-response parameters are provisional; coincidence selection and PET image reconstruction are not implemented.
+
+## Beginner presentation and study guide
+
+Start with the [beginner event-display guide](docs/event_display_guide.md), or use the complete **112-slide course**. It explains the detector layer by layer, basic particle physics, primary and secondary tracks, scintillation, optical transport, SiPM hits, the C++ implementation, terminal commands, and the two reference papers. Every slide includes code and explanatory notes; exercises include answers.
+
+| Material | Open or download |
+|---|---|
+| Editable PowerPoint with speaker notes | [112-slide PPTX](docs/presentations/beginner_20261115/spherical_pet_beginner.pptx) |
+| Presentation PDF | [112-slide PDF](docs/presentations/beginner_20261115/spherical_pet_beginner.pdf) |
+| Complete study guide | [113-page PDF](docs/presentations/beginner_20261115/study_guide.pdf) · [Markdown](docs/presentations/beginner_20261115/study_guide.md) |
+| Offline slide viewer | [Download HTML](https://github.com/mdimran-phy/spherical-pet/raw/refs/heads/main/docs/presentations/beginner_20261115/presentation.html), open locally; arrow keys navigate, **N** toggles notes |
+| Reproducible teaching package | [README, examples and source record](docs/presentations/beginner_20261115/README.md) |
+
+The course includes native views with zero, five and 100 optical paths, schematics, flowcharts, actual sensor maps and arrival-time plots. Actual C++ excerpts, teaching Python and future pseudocode are labeled separately. The saved-data lesson works without Geant4:
+
+```bash
+python3 docs/presentations/beginner_20261115/teaching_examples.py
+```
+
+The bundled reference event has 511 keV deposited, 29,002 optical photons and 1,099 accepted hits on 303 of 512 sensors. These are a reproducible example, not a calibrated detector-performance prediction.
+
+## Dr. Ray baseline — 2026-11-13
+
+The default is now **GAGG**, with a polished outer interface, a ground inner interface in both hemispheres, independently configurable guide/coupling materials, and single 511 keV gammas. The current sphere dimensions, pentagon/hexagon layout, and reference sensor are retained. Optical properties and unspecified coatings are provisional.
+
+The maintained [implementation and assumptions record](docs/ray_baseline.md) tracks Dr. Ray's instructions, sources, changes, checks, and open inputs. Start with:
+
+```bash
+./build/spherical-pet --config config/ray_baseline.conf -e 10 -seed 42 -o results/ray_baseline
+```
+
+Output schema 2 uses `edep_scintillator_keV` and adds `sipm_counts.csv` (including zero-hit channels) and `gamma_interactions.csv`. Existing display scripts also read earlier LYSO output. `--scintillator LYSO` selects a material comparison in the updated geometry; it does not reproduce the historical one-sided liner.
 
 ## Requirements
 
@@ -33,7 +65,7 @@ cmake --build build -j4
 
 If CMake cannot find Geant4, add `-DGeant4_DIR=/path/to/the/directory/containing/Geant4Config.cmake` or set `CMAKE_PREFIX_PATH` to your installation prefix. Load the environment for the **same Geant4 installation** before running so its libraries and datasets can be found.
 
-The repository contains no site-specific setup paths. The instructions apply equally to an extracted source ZIP.
+The build instructions apply equally to an extracted source ZIP. The teaching package also preserves explicitly labeled farm-specific command examples and historical run metadata; adapt those installation paths on another computer.
 
 ## Run
 
@@ -75,7 +107,7 @@ Change the scintillator thickness, optical yield, and decay time:
 
 ```bash
 ./build/spherical-pet -e 10 --shell-thickness-mm 8 \
-    --lyso-yield 32 --lyso-decay-ns 41 --check-overlaps 1 \
+    --gagg-yield 57 --gagg-decay-ns 88 --check-overlaps 1 \
     -o results/thickness8
 ```
 
@@ -108,7 +140,7 @@ Common options:
 | `-theta`, `-phi` | Direction [degrees] | 0, 0 |
 | `--angular` | fixed or isotropic | fixed |
 | `-gx`, `-gy`, `-gz` | Source position [mm] | 0, 0, 0 |
-| `--shell-thickness-mm` | LYSO thickness; outer radius stays 34.5 mm | 10 |
+| `--shell-thickness-mm` | Scintillator thickness; outer radius stays 34.5 mm | 10 |
 | `--sipm-pitch-mm` | Center spacing in each array [mm] | 4.4 |
 | `--spectrum` | CSV emission spectrum in photon energy | provisional flat spectrum |
 | `--check-overlaps` | Sampled geometry audit before transport | 0 |
@@ -133,6 +165,8 @@ Each run saves its resolved parameters, actual emission-spectrum table, Geant4/c
 | `summary.json` | Run totals and optical termination counts |
 | `events.csv` | Energy deposition, photons, accepted hits per event |
 | `sipm_hits.csv` | Accepted photon IDs, sensor IDs, times and positions |
+| `sipm_counts.csv` | 512 accepted-photon counts per event, including zero-hit sensors |
+| `gamma_interactions.csv` | Ordered gamma interactions in scintillator, positions and energies |
 | `gamma_steps.csv` | Saved gamma trajectory segments |
 | `optical_steps.csv` | Optional sampled optical trajectories; header only by default |
 | `geometry.obj` | Mesh of actual placed detector volumes, in mm |
@@ -194,7 +228,7 @@ Tests cover CLI validation, configuration precedence, deterministic transport, p
 
 ## Model scope and development
 
-The 34.5 mm outer scintillator radius, 39.5 mm guide-outlet plane, 18 mm outlet width, 32-array topology, and 4×4 sensors per array remain fixed in the supplied geometry. Supported exposed dimensions are the shell thickness and SiPM pitch; this release does not claim that every historical geometry constant is independently adjustable. Detector construction is in `src/DetectorConstruction.cc`.
+The 34.5 mm outer scintillator radius, 39.5 mm guide-outlet plane, 18 mm outlet width, 32-array topology, and 4×4 sensors per array remain fixed in the supplied geometry. Supported exposed dimensions are the shell thickness, SiPM pitch, and provisional coupling thickness; this release does not claim that every historical geometry constant is independently adjustable. Detector construction is in `src/DetectorConstruction.cc`.
 
 Read [docs/physics.md](docs/physics.md) before interpreting light yield or timing. The missing custom sensor was replaced with a documented reference model. Electronics, calibrated material spectra, coincidence processing, and PET reconstruction remain future work.
 

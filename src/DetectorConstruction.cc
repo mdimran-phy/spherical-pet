@@ -11,6 +11,7 @@
 #include "G4LogicalBorderSurface.hh"
 #include "G4LogicalVolume.hh"
 #include "G4Material.hh"
+#include "G4NistManager.hh"
 #include "G4MaterialPropertiesTable.hh"
 #include "G4OpticalSurface.hh"
 #include "G4Orb.hh"
@@ -75,6 +76,7 @@ DetectorConstruction::DetectorConstruction(const Config& settings)
     double indices[] = {config.number("epoxy-index"), config.number("epoxy-index")};
     epoxy->RemoveProperty("RINDEX");
     epoxy->AddProperty("RINDEX", energies, indices, 2);
+    epoxy->RemoveProperty("ABSLENGTH");
     if (config.number("epoxy-absorption-mm") > 0) {
         double lengths[] = {config.number("epoxy-absorption-mm") * mm,
                             config.number("epoxy-absorption-mm") * mm};
@@ -159,37 +161,62 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     world_LV->SetVisAttributes(new G4VisAttributes(G4Color(255, 255, 255, 0.1)));
     G4VPhysicalVolume* world_PV =
         new G4PVPlacement(NULL, G4ThreeVector(), world_LV, "world_PV", NULL, false, 0);
-    auto* fLu = new G4Element("Lutetium", "Lu", 71., 174.97 * g / mole);
-    auto* fY = new G4Element("Yttrium", "Y", 39., 88.91 * g / mole);
-    auto* fSi = new G4Element("Silicon", "Si", 14., 28.09 * g / mole);
-    auto* fO = new G4Element("O", "O", 8., 16.00 * g / mole);
-    auto* fLYSO = new G4Material("LYSO", 7.36 * g / cm3, 4);
-    G4double fractionLu_LYSO = 0.714467891;
-    fLYSO->AddElement(fLu, fractionLu_LYSO);
-    G4double fractionY_LYSO = 0.04033805;
-    fLYSO->AddElement(fY, fractionY_LYSO);
-    G4double fractionSi_LYSO = 0.063714272;
-    fLYSO->AddElement(fSi, fractionSi_LYSO);
-    G4double fractionO_LYSO = 0.181479788;
-    fLYSO->AddElement(fO, fractionO_LYSO);
-    auto spectrum = config.spectrum();
-    std::vector<G4double> energies, intensities, indices, lengths;
-    for (const auto& point : spectrum) {
+    auto* nist = G4NistManager::Instance();
+    const bool gagg = config.text("scintillator") == "GAGG";
+    auto* scintillator = new G4Material(config.text("scintillator"),
+                                        (gagg ? 6.63 : 7.36) * g / cm3, 4);
+    if (gagg) {
+        // Gd3Al2Ga3O12 host; trace Ce activation is represented by optical yield.
+        scintillator->AddElement(nist->FindOrBuildElement("Gd"), 3);
+        scintillator->AddElement(nist->FindOrBuildElement("Al"), 2);
+        scintillator->AddElement(nist->FindOrBuildElement("Ga"), 3);
+        scintillator->AddElement(nist->FindOrBuildElement("O"), 12);
+    } else {
+        scintillator->AddElement(nist->FindOrBuildElement("Lu"), 0.714467891);
+        scintillator->AddElement(nist->FindOrBuildElement("Y"), 0.04033805);
+        scintillator->AddElement(nist->FindOrBuildElement("Si"), 0.063714272);
+        scintillator->AddElement(nist->FindOrBuildElement("O"), 0.181479788);
+    }
+    // Separate materials prevent guide/coupling studies from modifying sensor windows.
+    auto* guideMaterial = new G4Material("GuideResinSurrogate", 1.2 * g / cm3, 3);
+    guideMaterial->AddElement(nist->FindOrBuildElement("C"), 15);
+    guideMaterial->AddElement(nist->FindOrBuildElement("H"), 16);
+    guideMaterial->AddElement(nist->FindOrBuildElement("O"), 2);
+    auto* couplingMaterial = new G4Material("EncapsoSurrogate", 1.0 * g / cm3, 4);
+    couplingMaterial->AddElement(nist->FindOrBuildElement("C"), 2);
+    couplingMaterial->AddElement(nist->FindOrBuildElement("H"), 6);
+    couplingMaterial->AddElement(nist->FindOrBuildElement("O"), 1);
+    couplingMaterial->AddElement(nist->FindOrBuildElement("Si"), 1);
+    auto opticalTable = [](double index, double absorptionMm) {
+        auto* table = new G4MaterialPropertiesTable();
+        G4double energy[] = {1 * eV, 6 * eV};
+        G4double indices[] = {index, index};
+        table->AddProperty("RINDEX", energy, indices, 2);
+        if (absorptionMm > 0) {
+            G4double lengths[] = {absorptionMm * mm, absorptionMm * mm};
+            table->AddProperty("ABSLENGTH", energy, lengths, 2);
+        }
+        return table;
+    };
+    guideMaterial->SetMaterialPropertiesTable(opticalTable(
+        config.number("guide-index"), config.number("guide-absorption-mm")));
+    couplingMaterial->SetMaterialPropertiesTable(opticalTable(
+        config.number("coupling-index"), config.number("coupling-absorption-mm")));
+    const std::string prefix = gagg ? "gagg-" : "lyso-";
+    auto* scintTable = opticalTable(config.number(prefix + "index"),
+                                    config.number(prefix + "absorption-mm"));
+    std::vector<G4double> energies, intensities;
+    for (const auto& point : config.spectrum()) {
         energies.push_back(point.first * eV);
         intensities.push_back(point.second);
-        indices.push_back(config.number("lyso-index"));
-        lengths.push_back(config.number("lyso-absorption-mm") * mm);
     }
-    auto* fLYSO_mt = new G4MaterialPropertiesTable();
-    fLYSO_mt->AddProperty("SCINTILLATIONCOMPONENT1", energies.data(), intensities.data(),
-                          energies.size());
-    fLYSO_mt->AddProperty("RINDEX", energies.data(), indices.data(), energies.size());
-    fLYSO_mt->AddProperty("ABSLENGTH", energies.data(), lengths.data(), energies.size());
-    fLYSO_mt->AddConstProperty("SCINTILLATIONYIELD", config.number("lyso-yield") / keV);
-    fLYSO_mt->AddConstProperty("RESOLUTIONSCALE", 1.0);
-    fLYSO_mt->AddConstProperty("SCINTILLATIONTIMECONSTANT1", config.number("lyso-decay-ns") * ns);
-    fLYSO_mt->AddConstProperty("SCINTILLATIONYIELD1", 1.0);
-    fLYSO->SetMaterialPropertiesTable(fLYSO_mt);
+    scintTable->AddProperty("SCINTILLATIONCOMPONENT1", energies.data(), intensities.data(),
+                            energies.size());
+    scintTable->AddConstProperty("SCINTILLATIONYIELD", config.number(prefix + "yield") / keV);
+    scintTable->AddConstProperty("RESOLUTIONSCALE", 1.0);
+    scintTable->AddConstProperty("SCINTILLATIONTIMECONSTANT1", config.number(prefix + "decay-ns") * ns);
+    scintTable->AddConstProperty("SCINTILLATIONYIELD1", 1.0);
+    scintillator->SetMaterialPropertiesTable(scintTable);
     G4double hemisphereThickness = config.number("shell-thickness-mm") * mm;
     G4double hemisphereRadiusOuterScaled = GeometryParameters::shellOuterRadiusMm * mm;
     G4double hemisphereRadiusInner = hemisphereRadiusOuterScaled - hemisphereThickness;
@@ -216,14 +243,14 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
         new G4SubtractionSolid("hemisphereSouthGasket", scint_hemisphere_virgin, gasketBox,
                                gasketIdentityMatrix, (scintTrans * -1.0));
     auto* hemisphereNorthScint_LV = new G4LogicalVolume(
-        hemisphereNorthScint, G4Material::GetMaterial("LYSO"), "hemisphereNorthScint_LV", 0, 0, 0);
+        hemisphereNorthScint, scintillator, "hemisphereNorthScint_LV", 0, 0, 0);
     auto* hemisphereNorthGasket_LV =
-        new G4LogicalVolume(hemisphereNorthGasket, MaterialFactory::getInstance()->getEpoxy(),
+        new G4LogicalVolume(hemisphereNorthGasket, couplingMaterial,
                             "hemisphereNorthGasket_LV", 0, 0, 0);
     auto* hemisphereSouthScint_LV = new G4LogicalVolume(
-        hemisphereSouthScint, G4Material::GetMaterial("LYSO"), "hemisphereSouthScint_LV", 0, 0, 0);
+        hemisphereSouthScint, scintillator, "hemisphereSouthScint_LV", 0, 0, 0);
     auto* hemisphereSouthGasket_LV =
-        new G4LogicalVolume(hemisphereSouthGasket, MaterialFactory::getInstance()->getEpoxy(),
+        new G4LogicalVolume(hemisphereSouthGasket, couplingMaterial,
                             "hemisphereSouthGasket_LV", 0, 0, 0);
     G4Colour white = G4Color::White();
     G4Colour yellow = G4Color::Yellow();
@@ -251,19 +278,22 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto* hemisphereSouthGasket_PV =
         new G4PVPlacement(0, G4ThreeVector(0.0 * mm, 0.0 * mm, 0.0 * mm), hemisphereSouthGasket_LV,
                           "hemisphereSouthGasket_PV", world_LV, false, 0);
-    auto* innermost_hemisphere =
-        new G4Sphere("innermost_hemisphere",
-                     hemisphereRadiusInner - GeometryParameters::innerLinerThicknessMm * mm,
-                     hemisphereRadiusInner, 0.0 * M_PI, 2.0 * M_PI, 0.5 * M_PI, 0.5 * M_PI);
-    auto* innermost_hemisphere_LV =
-        new G4LogicalVolume(innermost_hemisphere, MaterialFactory::getInstance()->getEpoxy(),
-                            "innermost_hemisphere_LV", 0, 0, 0);
-    innermost_hemisphere_LV->SetVisAttributes(
-        new G4VisAttributes(G4Color(white.GetRed(), white.GetGreen(), white.GetBlue(), 0.5)));
-    auto* innermost_hemisphere_PV =
-        new G4PVPlacement(rm_x1, G4ThreeVector(0.0 * mm, 0.0 * mm, 0.0 * mm),
-                          innermost_hemisphere_LV, "innermost_hemisphere_PV", world_LV, false, 0);
-    auto* lg_orb_void = new G4Orb("lg_orb_void", hemisphereRadiusOuterScaled);
+    // A full air cavity identifies the radial inner interface in BOTH hemispheres.
+    // The historical one-sided, perfectly reflecting epoxy liner is not confirmed.
+    auto* innerCavity = new G4Orb("innerCavity", hemisphereRadiusInner);
+    auto* innerCavityLV = new G4LogicalVolume(innerCavity,
+        MaterialFactory::getInstance()->getAir(), "innerCavity_LV");
+    innerCavityLV->SetVisAttributes(G4VisAttributes::GetInvisible());
+    auto* innerCavityPV = new G4PVPlacement(nullptr, {}, innerCavityLV,
+        "innerCavity_PV", world_LV, false, 0);
+    const double couplingOuter = hemisphereRadiusOuterScaled + config.number("coupling-thickness-mm") * mm;
+    auto* couplingShell = new G4Sphere("couplingShell", hemisphereRadiusOuterScaled,
+                                       couplingOuter, 0, twopi, 0, pi);
+    auto* couplingLV = new G4LogicalVolume(couplingShell, couplingMaterial, "couplingShell_LV");
+    couplingLV->SetVisAttributes(new G4VisAttributes(G4Color(0.8, 0.9, 1.0, 0.2)));
+    auto* couplingPV = new G4PVPlacement(nullptr, {}, couplingLV,
+        "couplingShell_PV", world_LV, false, 0);
+    auto* lg_orb_void = new G4Orb("lg_orb_void", couplingOuter);
     G4Colour brown = G4Color::Brown();
 
     // Vertex coordinates and face connectivity of the supplied faceted guide.
@@ -940,7 +970,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     if (!sections)
         throw std::runtime_error("Cannot finish guide_sections.csv");
     auto* chapeauPoofMinusHomeOrb_LV =
-        new G4LogicalVolume(selectedGuide, MaterialFactory::getInstance()->getEpoxy(),
+        new G4LogicalVolume(selectedGuide, guideMaterial,
                             "chapeauPoofMinusHomeOrb", 0, 0, 0);
     chapeauPoofMinusHomeOrb_LV->SetVisAttributes(new G4VisAttributes(
         G4Color(brown.GetRed() + 0.2, brown.GetGreen() + 0.2, brown.GetBlue() + 0.2, 1.0)));
@@ -962,134 +992,50 @@ G4VPhysicalVolume* DetectorConstruction::Construct() {
     auto* homeSphereMinusChapeauCasting_PV = new G4PVPlacement(
         chapeauPoofMinusHomeOrbMatrix, G4ThreeVector(0.0 * mm, 0.0 * mm, 0.0 * mm),
         homeSphereMinusChapeauCasting_LV, "homeSphereMinusChapeauCasting_PV", world_LV, false, 0);
-    G4String absorptiveOpticalSurfaceChapeauPoofString =
-        G4String("absorptiveOpticalSurfaceChapeauPoof");
-    G4OpticalSurface* absorptiveOpticalSurfaceChapeauPoof =
-        new G4OpticalSurface(absorptiveOpticalSurfaceChapeauPoofString);
-    new G4LogicalBorderSurface(absorptiveOpticalSurfaceChapeauPoofString,
-                               chapeauPoofMinusHomeOrb_PV, homeSphereMinusChapeauCasting_PV,
-                               absorptiveOpticalSurfaceChapeauPoof);
-    absorptiveOpticalSurfaceChapeauPoof->SetType(dielectric_metal);
-    absorptiveOpticalSurfaceChapeauPoof->SetFinish(polished);
-    absorptiveOpticalSurfaceChapeauPoof->SetModel(glisur);
-    G4double ppChapeauPoof[] = {2.0 * eV, 3.5 * eV};
-    const G4int numChapeauPoof = sizeof(ppChapeauPoof) / sizeof(G4double);
-    G4double reflectivityChapeauPoof[] = {0.0, 0.0};
-    assert(sizeof(reflectivityChapeauPoof) == sizeof(ppChapeauPoof));
-    G4double efficiencyChapeauPoof[] = {1.0, 1.0};
-    assert(sizeof(efficiencyChapeauPoof) == sizeof(ppChapeauPoof));
-    G4MaterialPropertiesTable* absorptiveOpticalSurfacePropertyChapeauPoof =
-        new G4MaterialPropertiesTable();
-    absorptiveOpticalSurfacePropertyChapeauPoof->AddProperty(
-        "REFLECTIVITY", ppChapeauPoof, reflectivityChapeauPoof, numChapeauPoof);
-    absorptiveOpticalSurfacePropertyChapeauPoof->AddProperty("EFFICIENCY", ppChapeauPoof,
-                                                             efficiencyChapeauPoof, numChapeauPoof);
-    absorptiveOpticalSurfaceChapeauPoof->SetMaterialPropertiesTable(
-        absorptiveOpticalSurfacePropertyChapeauPoof);
-    G4String absorptiveOpticalSurfacehemisphereNorthScintString =
-        G4String("absorptiveOpticalSurfacehemisphereNorthScint");
-    G4OpticalSurface* absorptiveOpticalSurfacehemisphereNorthScint =
-        new G4OpticalSurface(absorptiveOpticalSurfacehemisphereNorthScintString);
-    new G4LogicalBorderSurface(absorptiveOpticalSurfacehemisphereNorthScintString,
-                               hemisphereNorthScint_PV, innermost_hemisphere_PV,
-                               absorptiveOpticalSurfacehemisphereNorthScint);
-    absorptiveOpticalSurfacehemisphereNorthScint->SetType(dielectric_metal);
-    absorptiveOpticalSurfacehemisphereNorthScint->SetFinish(ground);
-    absorptiveOpticalSurfacehemisphereNorthScint->SetModel(glisur);
-    G4double pphemisphereNorthScint[] = {2.0 * eV, 3.5 * eV};
-    const G4int numhemisphereNorthScint = sizeof(pphemisphereNorthScint) / sizeof(G4double);
-    G4double reflectivityhemisphereNorthScint[] = {1.0, 1.0};
-    assert(sizeof(reflectivityhemisphereNorthScint) == sizeof(pphemisphereNorthScint));
-    G4double efficiencyhemisphereNorthScint[] = {0.0, 0.0};
-    assert(sizeof(efficiencyhemisphereNorthScint) == sizeof(pphemisphereNorthScint));
-    G4MaterialPropertiesTable* absorptiveOpticalSurfacePropertyhemisphereNorthScint =
-        new G4MaterialPropertiesTable();
-    absorptiveOpticalSurfacePropertyhemisphereNorthScint->AddProperty(
-        "REFLECTIVITY", pphemisphereNorthScint, reflectivityhemisphereNorthScint,
-        numhemisphereNorthScint);
-    absorptiveOpticalSurfacePropertyhemisphereNorthScint->AddProperty(
-        "EFFICIENCY", pphemisphereNorthScint, efficiencyhemisphereNorthScint,
-        numhemisphereNorthScint);
-    absorptiveOpticalSurfacehemisphereNorthScint->SetMaterialPropertiesTable(
-        absorptiveOpticalSurfacePropertyhemisphereNorthScint);
-    G4String absorptiveOpticalSurfacehemisphereNorthGasketString =
-        G4String("absorptiveOpticalSurfacehemisphereNorthGasket");
-    G4OpticalSurface* absorptiveOpticalSurfacehemisphereNorthGasket =
-        new G4OpticalSurface(absorptiveOpticalSurfacehemisphereNorthGasketString);
-    new G4LogicalBorderSurface(absorptiveOpticalSurfacehemisphereNorthGasketString,
-                               hemisphereNorthGasket_PV, innermost_hemisphere_PV,
-                               absorptiveOpticalSurfacehemisphereNorthGasket);
-    absorptiveOpticalSurfacehemisphereNorthGasket->SetType(dielectric_metal);
-    absorptiveOpticalSurfacehemisphereNorthGasket->SetFinish(ground);
-    absorptiveOpticalSurfacehemisphereNorthGasket->SetModel(glisur);
-    G4double pphemisphereNorthGasket[] = {2.0 * eV, 3.5 * eV};
-    const G4int numhemisphereNorthGasket = sizeof(pphemisphereNorthGasket) / sizeof(G4double);
-    G4double reflectivityhemisphereNorthGasket[] = {1.0, 1.0};
-    assert(sizeof(reflectivityhemisphereNorthGasket) == sizeof(pphemisphereNorthGasket));
-    G4double efficiencyhemisphereNorthGasket[] = {0.0, 0.0};
-    assert(sizeof(efficiencyhemisphereNorthGasket) == sizeof(pphemisphereNorthGasket));
-    G4MaterialPropertiesTable* absorptiveOpticalSurfacePropertyhemisphereNorthGasket =
-        new G4MaterialPropertiesTable();
-    absorptiveOpticalSurfacePropertyhemisphereNorthGasket->AddProperty(
-        "REFLECTIVITY", pphemisphereNorthGasket, reflectivityhemisphereNorthGasket,
-        numhemisphereNorthGasket);
-    absorptiveOpticalSurfacePropertyhemisphereNorthGasket->AddProperty(
-        "EFFICIENCY", pphemisphereNorthGasket, efficiencyhemisphereNorthGasket,
-        numhemisphereNorthGasket);
-    absorptiveOpticalSurfacehemisphereNorthGasket->SetMaterialPropertiesTable(
-        absorptiveOpticalSurfacePropertyhemisphereNorthGasket);
-    G4String absorptiveOpticalSurfacehemisphereSouthScintString =
-        G4String("absorptiveOpticalSurfacehemisphereSouthScint");
-    G4OpticalSurface* absorptiveOpticalSurfacehemisphereSouthScint =
-        new G4OpticalSurface(absorptiveOpticalSurfacehemisphereSouthScintString);
-    new G4LogicalBorderSurface(absorptiveOpticalSurfacehemisphereSouthScintString,
-                               hemisphereSouthScint_PV, innermost_hemisphere_PV,
-                               absorptiveOpticalSurfacehemisphereSouthScint);
-    absorptiveOpticalSurfacehemisphereSouthScint->SetType(dielectric_metal);
-    absorptiveOpticalSurfacehemisphereSouthScint->SetFinish(ground);
-    absorptiveOpticalSurfacehemisphereSouthScint->SetModel(glisur);
-    G4double pphemisphereSouthScint[] = {2.0 * eV, 3.5 * eV};
-    const G4int numhemisphereSouthScint = sizeof(pphemisphereSouthScint) / sizeof(G4double);
-    G4double reflectivityhemisphereSouthScint[] = {1.0, 1.0};
-    assert(sizeof(reflectivityhemisphereSouthScint) == sizeof(pphemisphereSouthScint));
-    G4double efficiencyhemisphereSouthScint[] = {0.0, 0.0};
-    assert(sizeof(efficiencyhemisphereSouthScint) == sizeof(pphemisphereSouthScint));
-    G4MaterialPropertiesTable* absorptiveOpticalSurfacePropertyhemisphereSouthScint =
-        new G4MaterialPropertiesTable();
-    absorptiveOpticalSurfacePropertyhemisphereSouthScint->AddProperty(
-        "REFLECTIVITY", pphemisphereSouthScint, reflectivityhemisphereSouthScint,
-        numhemisphereSouthScint);
-    absorptiveOpticalSurfacePropertyhemisphereSouthScint->AddProperty(
-        "EFFICIENCY", pphemisphereSouthScint, efficiencyhemisphereSouthScint,
-        numhemisphereSouthScint);
-    absorptiveOpticalSurfacehemisphereSouthScint->SetMaterialPropertiesTable(
-        absorptiveOpticalSurfacePropertyhemisphereSouthScint);
-    G4String absorptiveOpticalSurfacehemisphereSouthGasketString =
-        G4String("absorptiveOpticalSurfacehemisphereSouthGasket");
-    G4OpticalSurface* absorptiveOpticalSurfacehemisphereSouthGasket =
-        new G4OpticalSurface(absorptiveOpticalSurfacehemisphereSouthGasketString);
-    new G4LogicalBorderSurface(absorptiveOpticalSurfacehemisphereSouthGasketString,
-                               hemisphereSouthGasket_PV, innermost_hemisphere_PV,
-                               absorptiveOpticalSurfacehemisphereSouthGasket);
-    absorptiveOpticalSurfacehemisphereSouthGasket->SetType(dielectric_metal);
-    absorptiveOpticalSurfacehemisphereSouthGasket->SetFinish(ground);
-    absorptiveOpticalSurfacehemisphereSouthGasket->SetModel(glisur);
-    G4double pphemisphereSouthGasket[] = {2.0 * eV, 3.5 * eV};
-    const G4int numhemisphereSouthGasket = sizeof(pphemisphereSouthGasket) / sizeof(G4double);
-    G4double reflectivityhemisphereSouthGasket[] = {1.0, 1.0};
-    assert(sizeof(reflectivityhemisphereSouthGasket) == sizeof(pphemisphereSouthGasket));
-    G4double efficiencyhemisphereSouthGasket[] = {0.0, 0.0};
-    assert(sizeof(efficiencyhemisphereSouthGasket) == sizeof(pphemisphereSouthGasket));
-    G4MaterialPropertiesTable* absorptiveOpticalSurfacePropertyhemisphereSouthGasket =
-        new G4MaterialPropertiesTable();
-    absorptiveOpticalSurfacePropertyhemisphereSouthGasket->AddProperty(
-        "REFLECTIVITY", pphemisphereSouthGasket, reflectivityhemisphereSouthGasket,
-        numhemisphereSouthGasket);
-    absorptiveOpticalSurfacePropertyhemisphereSouthGasket->AddProperty(
-        "EFFICIENCY", pphemisphereSouthGasket, efficiencyhemisphereSouthGasket,
-        numhemisphereSouthGasket);
-    absorptiveOpticalSurfacehemisphereSouthGasket->SetMaterialPropertiesTable(
-        absorptiveOpticalSurfacePropertyhemisphereSouthGasket);
+    // Ordered border surfaces are installed in both directions. A ground finish
+    // is distinct from a reflective coating; bare dielectric interfaces use Fresnel optics.
+    auto surface = [&](const std::string& name, G4OpticalSurfaceFinish finish,
+                       const std::string& coating, double reflectivity) {
+        auto* optical = new G4OpticalSurface(name);
+        optical->SetModel(unified);
+        optical->SetFinish(finish);
+        optical->SetSigmaAlpha(finish == ground ? config.number("inner-sigma-alpha-rad") : 0);
+        optical->SetType(coating == "bare" ? dielectric_dielectric : dielectric_metal);
+        auto* table = new G4MaterialPropertiesTable();
+        G4double energy[] = {1 * eV, 6 * eV};
+        // Reflection about sampled microfacet normals (no implicit Lambertian coating).
+        G4double lobe[] = {1., 1.};
+        table->AddProperty("SPECULARLOBECONSTANT", energy, lobe, 2);
+        if (coating != "bare") {
+            G4double refl[] = {coating == "absorber" ? 0. : reflectivity,
+                              coating == "absorber" ? 0. : reflectivity};
+            G4double efficiency[] = {0., 0.};
+            table->AddProperty("REFLECTIVITY", energy, refl, 2);
+            table->AddProperty("EFFICIENCY", energy, efficiency, 2);
+        }
+        optical->SetMaterialPropertiesTable(table);
+        return optical;
+    };
+    auto borders = [](const std::string& name, G4VPhysicalVolume* a,
+                      G4VPhysicalVolume* b, G4OpticalSurface* optical) {
+        new G4LogicalBorderSurface(name + "_forward", a, b, optical);
+        new G4LogicalBorderSurface(name + "_reverse", b, a, optical);
+    };
+    auto* inner = surface("groundInner", ground, config.text("inner-surface"),
+                           config.number("inner-reflectivity"));
+    auto* polishedInterface = surface("polishedOuter", polished, "bare", 0);
+    for (auto* scint : {hemisphereNorthScint_PV, hemisphereSouthScint_PV}) {
+        borders(scint->GetName() + "_inner", scint, innerCavityPV, inner);
+        borders(scint->GetName() + "_outer", scint, couplingPV, polishedInterface);
+    }
+    // Equatorial coupling seam is a dielectric contact, not an invented reflector.
+    borders("northSeam", hemisphereNorthScint_PV, hemisphereNorthGasket_PV, polishedInterface);
+    borders("southSeam", hemisphereSouthScint_PV, hemisphereSouthGasket_PV, polishedInterface);
+    auto* guideBoundary = surface("guideBoundary", polished, config.text("guide-boundary"),
+                                   config.number("guide-reflectivity"));
+    borders("guideMask", chapeauPoofMinusHomeOrb_PV, homeSphereMinusChapeauCasting_PV, guideBoundary);
+    borders("guideAir", chapeauPoofMinusHomeOrb_PV, world_PV, guideBoundary);
+    borders("couplingGuide", couplingPV, chapeauPoofMinusHomeOrb_PV, polishedInterface);
     // Place 4 x 4 sensors on every pentagonal and hexagonal outlet.
     pentagonIndex = 0;
     G4RotationMatrix* myRotMatrixPent[12][16];

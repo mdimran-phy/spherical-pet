@@ -14,9 +14,8 @@ inline constexpr double worldHalfLengthMm = 100.0;
 inline constexpr double shellOuterRadiusMm = 34.5;
 inline constexpr double guideOutletRadiusMm = 39.5;
 inline constexpr double guideOutletHalfWidthMm = 9.0;
-// Each hemisphere supplies half of the 0.1 mm equatorial epoxy gasket.
+// Each hemisphere supplies half of the 0.1 mm equatorial coupling gasket.
 inline constexpr double halfGasketThicknessMm = 0.05;
-inline constexpr double innerLinerThicknessMm = 1.0;
 inline constexpr double maskExtensionScale = 2.0;
 static_assert(sensorCount > 0, "Detector must contain SiPMs");
 } // namespace GeometryParameters

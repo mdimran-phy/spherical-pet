@@ -15,7 +15,7 @@ for key in ('G4UI_USE_QT', 'G4UI_USE_XM', 'G4UI_USE_WIN32'):
 env['G4UI_USE_TCSH'] = '1'  # Terminal command input, native OpenGL window.
 env['LIBGL_ALWAYS_SOFTWARE'] = '1'
 common = ['-e', '1', '-x', 'e-', '-E', '100', '--source-z-mm', '28',
-          '--lyso-yield', '2', '--track-photons', '2', '--mesh-steps', '12', '-seed', '1234']
+          '--gagg-yield', '2', '--track-photons', '2', '--mesh-steps', '12', '-seed', '1234']
 with tempfile.TemporaryDirectory() as temp:
     root = Path(temp)
     for label, batch, limit in [('batch', 1, 4), ('visible', 0, 4), ('hidden', 0, 0)]:

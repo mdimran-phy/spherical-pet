@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "scintillator": "GAGG",
+  "events": 10,
+  "edep_scintillator_keV": 1882.12381162,
+  "optical_created": 107474,
+  "sipm_accepted_hits": 5295,
+  "guard_killed_tracks": 0,
+  "optical_endings": {
+    "OpAbsorption": 36649,
+    "boundary_status_9": 57926,
+    "sensor_sensitive_volume": 12742,
+    "world_escape": 157
+  }
+}

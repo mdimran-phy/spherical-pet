@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #include "Config.hh"
 #include <iostream>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 
@@ -56,6 +57,23 @@ int main() {
         rejects({"--guide-bevel-fraction", "0"});
         rejects({"--guide-bevel-fraction", "0.5"});
         rejects({"--guide-bevel-fraction", "nan"});
+        require(parse({}).text("scintillator") == "GAGG", "GAGG baseline default");
+        require(std::abs(parse({}).spectrum()[1].first - 1239.841984 / 520.0) < 1e-9,
+                "GAGG emission center");
+        require(parse({"--scintillator", "LYSO"}).spectrum()[1].first == 2.8,
+                "LYSO comparison emission center");
+        rejects({"--scintillator", "unknown"});
+        rejects({"--gagg-yield", "-1"});
+        rejects({"--gagg-index", "nan"});
+        rejects({"--gagg-absorption-mm", "0"});
+        rejects({"--guide-absorption-mm", "-1"});
+        rejects({"--coupling-index", "0.5"});
+        rejects({"--coupling-thickness-mm", "0"});
+        rejects({"--coupling-thickness-mm", "0.51"});
+        rejects({"--inner-surface", "unknown"});
+        rejects({"--guide-boundary", "unknown"});
+        rejects({"--inner-sigma-alpha-rad", "-1"});
+        rejects({"--inner-reflectivity", "1.1"});
         std::cout << "PASS: standalone configuration tests\n";
         return 0;
     } catch (const std::exception& e) {

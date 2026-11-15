@@ -60,3 +60,22 @@ The main `build` executable was rebuilt with `WITH_GEANT4_UIVIS=ON`. All seven C
 A separate Qt window was rendered under Xvfb for 10 events with seed 42 and 50 displayed optical paths per event. Its screenshot was visually inspected: detector geometry, gamma and optical tracks, SiPM markers, and the Qt controls are visible. The run reproduced 1592.07665036 keV deposited, 50,845 optical photons, 3,819 accepted SiPM hits, and zero guard kills. The Qt preview process was terminated after capture; clean session exit is covered by the terminal-driven OpenGL regression test. Manual Qt interaction and SSH forwarding to a user's desktop were not tested.
 
 This farm requires matching Qt plugin and private-library versions. CMake now generates `build/native-env.sh` from the selected Qt target; source it after the Geant4 environment. The native regression test also passed with this environment loaded. See the README for the launch command, event review controls, and the distinction between displayed optical paths and simulated photons. Preview files remain under the ignored `results/native_display_preview_20261111_fixed/` directory.
+
+## Dr. Ray GAGG baseline — 2026-11-13
+
+Version 0.2.0 builds with Geant4 11.1.2; all seven CTest tests pass. New checks
+cover GAGG host/density, symmetric polished/ground boundaries, independent
+materials, gamma interaction records, per-sensor counts including zero-hit
+channels, alternate coatings and LYSO comparison.
+
+The 10-event single-511-keV-gamma run (seed 42, default GAGG yield) deposited
+1882.12381162 keV, created 107,474 optical photons and recorded 5,295 accepted
+SiPM hits. No guard kills occurred. Photon termination counts reconcile exactly.
+The sampled overlap audit reported zero overlaps across 2,056 volumes at 1,000
+samples per volume and 0.001 mm tolerance. All three offline display scripts
+completed; the rendered cutaway was visually inspected. These are smoke checks,
+not measured calibration or scanner-performance validation.
+
+See the maintained [baseline record](ray_baseline.md) and
+[test log](validation/ray_baseline_20261113/ctest.txt). Older validation entries
+above describe the earlier LYSO model and are retained as history.
