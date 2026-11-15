@@ -1,0 +1,9 @@
+# One 511 keV gamma at the center, directed along +z.
+# Run count, random seed, output and display options belong on the command line.
+/gps/particle gamma
+/gps/number 1
+/gps/energy 511 keV
+/gps/pos/type Point
+/gps/pos/centre 0 0 0 mm
+/gps/ang/type planar
+/gps/direction 0 0 1
