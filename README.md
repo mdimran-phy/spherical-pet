@@ -32,24 +32,76 @@ If CMake cannot locate Geant4, supply `-DGeant4_DIR=/path/to/directory/containin
 
 Run the commands below from the repository root. Each run must use a **new output directory**; existing results are never overwritten.
 
-## Quick start
+## Synopsis
 
-Simulate ten 511 keV gammas from the center, directed along +z:
+```text
+./build/spherical-pet [OPTION] [VALUE] ...
+```
+
+For example, simulate 1,000 single 511 keV gammas in batch mode:
+
+```bash
+./build/spherical-pet -r 0 -b 1 -x gamma -E 511 -theta 0 -phi 0 -e 1000 -seed 42 -o results/simulation
+```
+
+Here `-r 0` selects simulation, `-b 1` disables the GUI, `-x gamma` selects the primary particle, `-E 511` sets its energy in keV, `-theta 0 -phi 0` points along +z, `-e 1000` requests 1,000 events, and `-o` selects the output directory. The source is at the detector center by default.
+
+## Run the simulation
+
+### One-event test
+
+Run this small example before starting a larger simulation:
+
+```bash
+./build/spherical-pet -r 0 -b 1 -x gamma -E 511 -theta 0 -phi 0 -e 1 -seed 42 -o results/smoke_test
+```
+
+### Batch simulation
+
+Run 1,000 events without opening a viewer:
+
+```bash
+./build/spherical-pet -r 0 -b 1 -x gamma -E 511 -theta 0 -phi 0 -e 1000 -seed 42 -o results/batch_gamma
+```
+
+Change the incident direction to a polar angle of 30 degrees and an azimuth of 45 degrees:
+
+```bash
+./build/spherical-pet -r 0 -b 1 -x gamma -E 511 -theta 30 -phi 45 -e 100 -seed 42 -o results/angled_gamma
+```
+
+### Simulation with event display
+
+Use a [visualization-enabled build and graphical session](#native-event-display), then run:
+
+```bash
+./build/spherical-pet -r 0 -b 0 -x gamma -E 511 -theta 0 -phi 0 -e 1 -seed 42 --vis-photons 100 -o results/display_gamma
+```
+
+`-b 0` opens the native Geant4 viewer. `--vis-photons 100` draws up to 100 optical trajectories per event while all optical photons are transported. Use `--vis-photons 5` for a less crowded view. A gamma can escape without producing optical hits; increase `-e` to inspect more events.
+
+### Run from the build directory
+
+The same executable can be called directly after entering `build/`:
+
+```bash
+cd build
+./spherical-pet -r 0 -b 1 -x gamma -E 511 -theta 0 -phi 0 -e 10 -seed 42 -o results/from_build
+cd ..
+```
+
+This example writes to `build/results/from_build`. All other examples in this README run from the repository root. Always choose a new output directory when repeating a command.
+
+### Run with a source macro
+
+The centered gamma source can also be defined in a macro:
 
 ```bash
 ./build/spherical-pet --macro macros/gamma_center.mac \
-    -e 10 -seed 42 -o results/gamma_center
+    -r 0 -b 1 -e 10 -seed 42 -o results/gamma_center
 ```
 
-Alternatively, specify the source directly on the command line:
-
-```bash
-./build/spherical-pet -x gamma -E 511 \
-    -gx 0 -gy 0 -gz 0 --angular fixed -theta 0 -phi 0 \
-    -e 10 -seed 42 -o results/gamma_cli
-```
-
-`./run.sh` is a convenience wrapper for `./build/spherical-pet` and accepts the same arguments.
+`./run.sh` is a convenience wrapper for `./build/spherical-pet` and accepts the same arguments. Use `-E` for primary kinetic energy in keV; `-p` is not a supported option.
 
 ## Source macros
 
